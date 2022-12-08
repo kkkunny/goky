@@ -1,2 +1,2 @@
-# dotlang
-The Dot programming language
+# klang
+The K programming language
