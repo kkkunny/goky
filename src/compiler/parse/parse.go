@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
-	"github.com/kkkunny/klang/src/compiler/internal/utils"
+	"github.com/kkkunny/klang/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
 	"os"
 )

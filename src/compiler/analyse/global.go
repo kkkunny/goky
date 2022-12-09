@@ -1,8 +1,8 @@
 package analyse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/internal/parse"
-	"github.com/kkkunny/klang/src/compiler/internal/utils"
+	"github.com/kkkunny/klang/src/compiler/parse"
+	"github.com/kkkunny/klang/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
 )
 
@@ -17,9 +17,6 @@ type Function struct {
 	ExternName string // 外部名
 	NoReturn   bool   // 函数是否不返回
 	Exit       bool   // 函数是否会导致程序退出
-	Main       bool   // 是否为main函数
-	Init       bool   // 是否为init函数
-	Fini       bool   // 是否为fini函数
 
 	Ret    Type
 	Params []*Param
@@ -126,17 +123,6 @@ func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.F
 		case astAttr.Exit != nil:
 			f.Exit = true
 			f.NoReturn = true
-		case astAttr.Main != nil:
-			if ctx.main != nil {
-				errors = append(errors, utils.Errorf(ast.Name.Position, "duplicate main function"))
-			} else {
-				ctx.main = f
-				f.Main = true
-			}
-		case astAttr.Init != nil:
-			f.Init = true
-		case astAttr.Fini != nil:
-			f.Fini = true
 		default:
 			panic("")
 		}
@@ -255,12 +241,6 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 		case astAttr.NoReturn != nil:
 			fallthrough
 		case astAttr.Exit != nil:
-			fallthrough
-		case astAttr.Main != nil:
-			fallthrough
-		case astAttr.Init != nil:
-			fallthrough
-		case astAttr.Fini != nil:
 			errors = append(errors, utils.Errorf(astAttr.Position, "attribute `@noreturn` cannot be used for global variables"))
 		default:
 			panic("")

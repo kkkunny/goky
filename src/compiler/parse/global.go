@@ -1,6 +1,8 @@
 package parse
 
-import "github.com/kkkunny/klang/src/compiler/internal/utils"
+import (
+	"github.com/kkkunny/klang/src/compiler/utils"
+)
 
 // Global 全局
 type Global struct {
@@ -22,9 +24,6 @@ type Attr struct {
 	LinkLib  *String `| "@link" "(" "lib" "=" @String ")"`
 	NoReturn *string `| @"@noreturn"`
 	Exit     *string `| @"@exit"`
-	Main     *string `| @"@main"`
-	Init     *string `| @"@init"`
-	Fini     *string `| @"@fini"`
 }
 
 type GlobalWithAttrSuffix struct {

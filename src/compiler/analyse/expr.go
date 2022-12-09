@@ -1,8 +1,8 @@
 package analyse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/internal/parse"
-	"github.com/kkkunny/klang/src/compiler/internal/utils"
+	"github.com/kkkunny/klang/src/compiler/parse"
+	"github.com/kkkunny/klang/src/compiler/utils"
 )
 
 // Expr 表达式

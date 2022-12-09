@@ -2,7 +2,7 @@ package codegen
 
 import (
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/internal/analyse"
+	"github.com/kkkunny/klang/src/compiler/analyse"
 	"strings"
 )
 

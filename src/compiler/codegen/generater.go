@@ -3,7 +3,8 @@ package codegen
 import (
 	"bytes"
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/internal/analyse"
+	"github.com/kkkunny/klang/src/compiler/analyse"
+	"github.com/kkkunny/stl/list"
 	"io"
 	"strings"
 )
@@ -16,6 +17,8 @@ type CodeGenerator struct {
 	vars      map[analyse.Expr]string
 	types     map[string]string
 	typeCount uint
+	varCount  uint
+	defers    *list.SingleLinkedList[*analyse.Call]
 }
 
 // NewGenerator 新建代码生成器
@@ -24,6 +27,7 @@ func NewGenerator(w io.Writer) *CodeGenerator {
 		writer: w,
 		vars:   make(map[analyse.Expr]string),
 		types:  make(map[string]string),
+		defers: list.NewSingleLinkedList[*analyse.Call](),
 	}
 }
 
@@ -77,21 +81,10 @@ func (self *CodeGenerator) Generate(mean analyse.ProgramContext) {
 					self.vars[p] = name
 				}
 				self.writef("%s %s(%s)", self.generateType(g.Ret), g.ExternName, strings.Join(params, ", "))
-				var count uint
-				self.generateBlock(&count, *g.Body)
+				self.varCount = 0
+				self.defers.Clear()
+				self.generateBlock(*g.Body)
 			}
-
-			// main
-			if g.Main {
-				self.writef("int main(){\n")
-				self.writef("%s();\n", g.ExternName)
-				self.writef("return 0;\n")
-				self.writef("}\n")
-			}
-			// init
-			// TODO
-			// fini
-			// TODO
 		default:
 			panic("")
 		}

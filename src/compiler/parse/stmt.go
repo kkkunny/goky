@@ -1,6 +1,8 @@
 package parse
 
-import "github.com/kkkunny/klang/src/compiler/internal/utils"
+import (
+	"github.com/kkkunny/klang/src/compiler/utils"
+)
 
 // Block 代码块
 type Block struct {

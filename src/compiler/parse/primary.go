@@ -1,7 +1,7 @@
 package parse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/internal/utils"
+	"github.com/kkkunny/klang/src/compiler/utils"
 	"strings"
 )
 

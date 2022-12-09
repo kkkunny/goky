@@ -38,7 +38,6 @@ func newProgramContext() *ProgramContext {
 type packageContext struct {
 	f       *ProgramContext
 	path    stlos.Path
-	main    *Function
 	globals map[string]types.Pair[bool, Ident]
 	externs map[string]*packageContext
 }

@@ -1,8 +1,8 @@
 package analyse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/internal/parse"
-	"github.com/kkkunny/klang/src/compiler/internal/utils"
+	"github.com/kkkunny/klang/src/compiler/parse"
+	"github.com/kkkunny/klang/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
 )
 
@@ -15,9 +15,6 @@ func AnalyseMain(ast parse.Package) (*ProgramContext, error) {
 	ctx.importedPackageSet[ast.PkgPath] = pkgCtx
 	if err := analyseNoMain(pkgCtx, ast); err != nil {
 		return nil, err
-	}
-	if pkgCtx.main != nil {
-		pkgCtx.main.Main = true
 	}
 	return ctx, nil
 }
@@ -83,10 +80,6 @@ func analyseNoMain(ctx *packageContext, ast parse.Package) error {
 	// 包体
 	if err := analysePackage(ctx, ast); err != nil {
 		return err
-	}
-	// 屏蔽包主函数
-	if ctx.main != nil {
-		ctx.main.Main = false
 	}
 	return nil
 }

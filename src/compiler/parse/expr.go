@@ -1,6 +1,8 @@
 package parse
 
-import "github.com/kkkunny/klang/src/compiler/internal/utils"
+import (
+	"github.com/kkkunny/klang/src/compiler/utils"
+)
 
 // Expr 表达式
 type Expr struct {
