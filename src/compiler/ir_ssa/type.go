@@ -34,6 +34,18 @@ var (
 	F64 = &TypeFloat{Bytes: 8}
 )
 
+// BasicType 基础类型
+type BasicType interface {
+	Type
+	basic()
+}
+
+// IsBasicType 是否是基础类型
+func IsBasicType(t Type) bool {
+	_, ok := t.(BasicType)
+	return ok
+}
+
 // TypeNone 空类型
 type TypeNone struct{}
 
@@ -58,6 +70,8 @@ func (self TypeNone) GetByte() uint {
 func (self TypeNone) GetAlign() uint {
 	panic("")
 }
+
+func (self TypeNone) basic() {}
 
 // NumberType 数字类型
 type NumberType interface {
@@ -117,6 +131,8 @@ func (self TypeSint) number() {}
 
 func (self TypeSint) int() {}
 
+func (self TypeSint) basic() {}
+
 // TypeUint 无符号整型
 type TypeUint struct {
 	Bytes uint
@@ -151,6 +167,8 @@ func (self TypeUint) number() {}
 
 func (self TypeUint) int() {}
 
+func (self TypeUint) basic() {}
+
 // TypeFloat 浮点型
 type TypeFloat struct {
 	Bytes uint
@@ -182,6 +200,8 @@ func (self TypeFloat) GetAlign() uint {
 }
 
 func (self TypeFloat) number() {}
+
+func (self TypeFloat) basic() {}
 
 // TypeFunc 函数类型
 type TypeFunc struct {
@@ -240,6 +260,8 @@ func (self TypeFunc) GetAlign() uint {
 	return utils.PtrByte
 }
 
+func (self TypeFunc) basic() {}
+
 // TypePtr 指针类型
 type TypePtr struct {
 	Elem Type
@@ -276,6 +298,8 @@ func (self TypePtr) GetByte() uint {
 func (self TypePtr) GetAlign() uint {
 	return utils.PtrByte
 }
+
+func (self TypePtr) basic() {}
 
 // TypeArray 数组类型
 type TypeArray struct {
