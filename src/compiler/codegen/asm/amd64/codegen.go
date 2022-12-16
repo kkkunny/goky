@@ -4,6 +4,7 @@ import (
 	"fmt"
 	ir "github.com/kkkunny/klang/src/compiler/ir_ssa"
 	"github.com/kkkunny/klang/src/compiler/utils"
+	stlutil "github.com/kkkunny/stl/util"
 	"io"
 )
 
@@ -87,11 +88,11 @@ func (self *CodeGenerator) load(t ir.Type) {
 	case ir.IntType, *ir.TypePtr:
 		switch {
 		case typ.GetByte() == 1:
-			self.writeln("  mov al, byte ptr [rax]")
+			self.writeln("  mov%sx rax, byte ptr [rax]", stlutil.Ternary(ir.IsSintType(typ), "s", "z"))
 		case typ.GetByte() == 2:
-			self.writeln("  mov ax, word ptr [rax]")
+			self.writeln("  mov%sx rax, word ptr [rax]", stlutil.Ternary(ir.IsSintType(typ), "s", "z"))
 		case typ.GetByte() <= 4:
-			self.writeln("  mov eax, dword ptr [rax]")
+			self.writeln("  mov%sxd rax, dword ptr [rax]", stlutil.Ternary(ir.IsSintType(typ), "s", "z"))
 		case typ.GetByte() <= 8:
 			self.writeln("  mov rax, qword ptr [rax]")
 		default:

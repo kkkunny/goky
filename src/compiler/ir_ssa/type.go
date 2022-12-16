@@ -93,7 +93,7 @@ type IntType interface {
 
 // IsIntType 是否是整型
 func IsIntType(t Type) bool {
-	_, ok := t.(*TypeSint)
+	_, ok := t.(IntType)
 	return ok
 }
 

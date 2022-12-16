@@ -7,7 +7,6 @@ import (
 	stlos "github.com/kkkunny/stl/os"
 	"github.com/kkkunny/stl/util"
 	"os"
-	"syscall"
 	"testing"
 )
 
@@ -16,7 +15,6 @@ func TestGenerate(t *testing.T) {
 	ast := util.MustValue(parse.ParseFile("../../../main.k"))
 	mean := util.MustValue(analyse.AnalyseMain(*ast))
 	module := NewGenerator().Generate(*mean)
-	syscall.Chroot()
 	fmt.Println(module)
 }
 

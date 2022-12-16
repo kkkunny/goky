@@ -1,12 +1,9 @@
-@extern(printf)
-func printf(*i8)
+import std.sys
+import std.fmt
 
-func print(s: [13]i8){
-    printf(&s as *i8)
-}
-
-@extern(main)
-func main()i32{
-    print(c"hello world\n")
-    return 0
+@extern(_start)
+func main(){
+    let s = c"hello world\n"
+    fmt:print(&s as *i8)
+    sys:exit(12)
 }

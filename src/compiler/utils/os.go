@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	stlos "github.com/kkkunny/stl/os"
 	"golang.org/x/exp/constraints"
 	"os"
@@ -24,7 +23,11 @@ func GetRootPath() (stlos.Path, error) {
 	envName := "KROOT"
 	path := stlos.Path(os.Getenv(envName))
 	if path == "" {
-		return "", fmt.Errorf("need env `%s`", envName)
+		path, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		return stlos.Path(path), nil
 	}
 	return path.GetAbsolute()
 }
