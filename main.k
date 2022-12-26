@@ -1,9 +1,6 @@
-import std.sys
-import std.fmt
-
-@extern(_start)
-func main(){
-    let s = c"hello world\n"
-    fmt:print(&s as *i8)
-    sys:exit(12)
+@extern(main)
+func main()u8{
+    let j: struct{v: i32;} = {10}
+    let i = j.v
+    return 0
 }

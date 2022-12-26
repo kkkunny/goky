@@ -4,15 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/kkkunny/klang/src/compiler/analyse"
-	"github.com/kkkunny/klang/src/compiler/codegen/asm/amd64"
-	"github.com/kkkunny/klang/src/compiler/generate_ssa"
+	"github.com/kkkunny/klang/src/compiler/codegen"
 	"github.com/kkkunny/klang/src/compiler/parse"
 	stlos "github.com/kkkunny/stl/os"
+	"github.com/kkkunny/stl/util"
 	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+	"tinygo.org/x/go-llvm"
 )
 
 // LookupCmd 查找命令
@@ -73,14 +74,27 @@ func outputAsm(config *buildConfig, from, to stlos.Path) (stlos.Path, error) {
 	if err != nil {
 		return "", err
 	}
-	ssa := generate_ssa.Optimize(generate_ssa.NewGenerator().Generate(*mean))
+	module := codegen.Optimize(
+		codegen.NewCodeGenerator().Codegen(*mean),
+		util.Ternary(config.Release, llvm.OptLevelAggressive, llvm.OptLevelDefault),
+		util.Ternary(config.Release, llvm.SizeLevelZ, llvm.SizeLevelNone),
+	)
 
-	file, err := os.OpenFile(to.String(), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	if err = llvm.InitializeNativeTarget(); err != nil {
+		return "", err
+	}
+	if err = llvm.InitializeNativeAsmPrinter(); err != nil {
+		return "", err
+	}
+	module.SetTarget(llvm.DefaultTargetTriple())
+	target, err := llvm.GetTargetFromTriple(module.Target())
 	if err != nil {
 		return "", err
 	}
-	defer file.Close()
-	amd64.NewCodeGenerator(file, *ssa).Codegen()
+	tm := target.CreateTargetMachine(module.Target(), "generic", "", llvm.CodeGenLevelNone, llvm.RelocPIC, llvm.CodeModelDefault)
+	if err = tm.EmitToFile(module, to.String(), llvm.AssemblyFile); err != nil {
+		return "", err
+	}
 
 	for l := range mean.Links {
 		config.Linkages = append(config.Linkages, l)
@@ -125,11 +139,11 @@ func outputSharedFile(from, to stlos.Path, libraries, libraryPaths []string) (st
 		}
 	}
 
-	_, linker := LookupCmd("ld.mold", "ld.lld", "ld.gold", "ld.bfd", "ld")
+	_, linker := LookupCmd("clang", "gcc")
 	if linker == nil {
 		return "", errors.New("can not found a linker")
 	}
-	linker.Args = append(linker.Args, "-shared", "-pie", "--eh-frame-hdr", "-m", "elf_x86_64", "-dynamic-linker", "/lib64/ld-linux-x86-64.so.2", "-o", to.String(), from.String())
+	linker.Args = append(linker.Args, "-shared", "-fPIC", "-o", to.String(), from.String())
 	for _, l := range libraries {
 		linker.Args = append(linker.Args, fmt.Sprintf("-l%s", l))
 	}
@@ -150,11 +164,11 @@ func outputExecutableFile(from, to stlos.Path, libraries, libraryPaths []string)
 		}
 	}
 
-	_, linker := LookupCmd("ld.mold", "ld.lld", "ld.gold", "ld.bfd", "ld")
+	_, linker := LookupCmd("clang", "gcc")
 	if linker == nil {
 		return "", errors.New("can not found a linker")
 	}
-	linker.Args = append(linker.Args, "-static", "-pie", "--eh-frame-hdr", "-m", "elf_x86_64", "-o", to.String(), from.String())
+	linker.Args = append(linker.Args, "-static", "-fPIC", "-o", to.String(), from.String())
 	for _, l := range libraries {
 		linker.Args = append(linker.Args, fmt.Sprintf("-l%s", l))
 	}
