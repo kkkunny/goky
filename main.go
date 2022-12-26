@@ -8,8 +8,8 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "k",
-	Short:   "The K programming language",
+	Use:     "kcc",
+	Short:   "The compiler for the K programming language",
 	Version: "v0.1",
 }
 

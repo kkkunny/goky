@@ -58,13 +58,18 @@ func (self *CodeGenerator) Codegen(mean analyse.ProgramContext) llvm.Module {
 		case *analyse.Function:
 			if global.Body != nil {
 				f := self.vars[global]
-				for i, p := range global.Params {
-					self.vars[p] = f.Param(i)
-				}
 				self.function = f
 				entry := llvm.AddBasicBlock(f, "")
 				self.builder.SetInsertPointAtEnd(entry)
+
+				for i, p := range global.Params {
+					param := self.builder.CreateAlloca(self.codegenType(p.GetType()), "")
+					self.builder.CreateStore(f.Param(i), param)
+					self.vars[p] = param
+				}
+				
 				self.codegenBlock(*global.Body)
+
 				self.defers = nil
 			}
 		case *analyse.GlobalVariable:

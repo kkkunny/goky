@@ -21,7 +21,7 @@ func RunCmd() *cobra.Command {
 			// conf.Backend = "asm"
 			target := stlos.Path(args[0])
 			if !target.IsExist() {
-				return errors.New("expect a goky source file path")
+				return errors.New("expect a k source file path")
 			}
 			target, err := target.GetAbsolute()
 			if err != nil {
