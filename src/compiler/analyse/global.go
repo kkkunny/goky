@@ -257,3 +257,14 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 		return nil, utils.NewMultiError(errors...)
 	}
 }
+
+// 类型定义
+func analyseTypedef(ctx *packageContext, ast parse.Typedef) utils.Error {
+	dst, err := analyseType(ctx, &ast.Dst)
+	if err != nil {
+		return err
+	}
+	td := ctx.typedefs[ast.Name.Value].Second
+	td.Dst = dst
+	return nil
+}

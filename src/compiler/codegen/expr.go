@@ -16,45 +16,45 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 		switch expr.Opera {
 		case "+":
 			l, r := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateNSWAdd(l, r, "")
-			} else if analyse.IsUintType(expr.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateNUWAdd(l, r, "")
 			} else {
 				return self.builder.CreateFAdd(l, r, "")
 			}
 		case "-":
 			l, r := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateNSWSub(l, r, "")
-			} else if analyse.IsUintType(expr.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateNUWSub(l, r, "")
 			} else {
 				return self.builder.CreateFSub(l, r, "")
 			}
 		case "*":
 			l, r := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateNSWMul(l, r, "")
-			} else if analyse.IsUintType(expr.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateNUWMul(l, r, "")
 			} else {
 				return self.builder.CreateFMul(l, r, "")
 			}
 		case "/":
 			l, r := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateSDiv(l, r, "")
-			} else if analyse.IsUintType(expr.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateUDiv(l, r, "")
 			} else {
 				return self.builder.CreateFDiv(l, r, "")
 			}
 		case "%":
 			l, r := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateSRem(l, r, "")
-			} else if analyse.IsUintType(expr.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateURem(l, r, "")
 			} else {
 				return self.builder.CreateFRem(l, r, "")
@@ -73,7 +73,7 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			return self.builder.CreateShl(l, r, "")
 		case ">>":
 			l, r := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.GetType()) {
 				return self.builder.CreateAShr(l, r, "")
 			} else {
 				return self.builder.CreateLShr(l, r, "")
@@ -164,36 +164,36 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			return self.builder.CreateNot(self.equal(left, right), "")
 		case "<":
 			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.Left.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntSLT, left, right, "")
-			} else if analyse.IsUintType(expr.Left.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntULT, left, right, "")
 			} else {
 				return self.builder.CreateFCmp(llvm.FloatOLT, left, right, "")
 			}
 		case "<=":
 			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.Left.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntSLE, left, right, "")
-			} else if analyse.IsUintType(expr.Left.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntULE, left, right, "")
 			} else {
 				return self.builder.CreateFCmp(llvm.FloatOLE, left, right, "")
 			}
 		case ">":
 			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.Left.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntSGT, left, right, "")
-			} else if analyse.IsUintType(expr.Left.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntUGT, left, right, "")
 			} else {
 				return self.builder.CreateFCmp(llvm.FloatOGT, left, right, "")
 			}
 		case ">=":
 			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			if analyse.IsSintType(expr.Left.GetType()) {
+			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntSGE, left, right, "")
-			} else if analyse.IsUintType(expr.Left.GetType()) {
+			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
 				return self.builder.CreateICmp(llvm.IntUGE, left, right, "")
 			} else {
 				return self.builder.CreateFCmp(llvm.FloatOGE, left, right, "")
@@ -219,13 +219,13 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 	case *analyse.Index:
 		fromType := expr.From.GetType()
 		switch {
-		case analyse.IsArrayType(fromType):
+		case analyse.IsArrayTypeAndSon(fromType):
 			from, index := self.codegenExpr(expr.From, false), self.codegenExpr(expr.Index, true)
 			return self.createArrayIndex(from, index, getValue)
-		case analyse.IsPtrType(fromType):
+		case analyse.IsPtrTypeAndSon(fromType):
 			from, index := self.codegenExpr(expr.From, true), self.codegenExpr(expr.Index, true)
 			return self.createPointerIndex(from, index, getValue)
-		case analyse.IsTupleType(fromType):
+		case analyse.IsTupleTypeAndSon(fromType):
 			from := self.codegenExpr(expr.From, false)
 			index := expr.Index.(*analyse.Integer).Value
 			return self.createStructIndex(from, uint(index), getValue)
@@ -309,7 +309,7 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 	case *analyse.GetField:
 		f := self.codegenExpr(expr.From, false)
 		var index uint
-		for iter := expr.From.GetType().(*analyse.TypeStruct).Fields.Begin(); iter.HasValue(); iter.Next() {
+		for iter := analyse.GetBaseType(expr.From.GetType()).(*analyse.TypeStruct).Fields.Begin(); iter.HasValue(); iter.Next() {
 			if iter.Key() == expr.Index {
 				break
 			}
@@ -321,23 +321,25 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 		meanFt, meanTo := expr.From.GetType(), expr.To
 		to := self.codegenType(expr.GetType())
 		switch {
-		case analyse.IsIntType(meanFt) && analyse.IsIntType(meanTo):
+		case analyse.GetDepthBaseType(meanFt).Equal(analyse.GetDepthBaseType(meanTo)):
+			return from
+		case analyse.IsIntTypeAndSon(meanFt) && analyse.IsIntTypeAndSon(meanTo):
 			return self.builder.CreateIntCast(from, to, "")
-		case analyse.IsFloatType(meanFt) && analyse.IsFloatType(meanTo):
+		case analyse.IsFloatTypeAndSon(meanFt) && analyse.IsFloatTypeAndSon(meanTo):
 			return self.builder.CreateFPCast(from, to, "")
-		case analyse.IsSintType(meanFt) && analyse.IsFloatType(meanTo):
+		case analyse.IsSintTypeAndSon(meanFt) && analyse.IsFloatTypeAndSon(meanTo):
 			return self.builder.CreateSIToFP(from, to, "")
-		case analyse.IsUintType(meanFt) && analyse.IsFloatType(meanTo):
+		case analyse.IsUintTypeAndSon(meanFt) && analyse.IsFloatTypeAndSon(meanTo):
 			return self.builder.CreateUIToFP(from, to, "")
-		case analyse.IsFloatType(meanFt) && analyse.IsSintType(meanTo):
+		case analyse.IsFloatTypeAndSon(meanFt) && analyse.IsSintTypeAndSon(meanTo):
 			return self.builder.CreateFPToSI(from, to, "")
-		case analyse.IsFloatType(meanFt) && analyse.IsUintType(meanTo):
+		case analyse.IsFloatTypeAndSon(meanFt) && analyse.IsUintTypeAndSon(meanTo):
 			return self.builder.CreateFPToUI(from, to, "")
-		case analyse.IsIntType(meanFt) && (analyse.IsPtrType(meanTo) || analyse.IsFuncType(meanTo)):
-			return self.builder.CreateBitCast(from, to, "")
-		case (analyse.IsPtrType(meanFt) || analyse.IsFuncType(meanFt)) && analyse.IsIntType(meanTo):
-			return self.builder.CreateBitCast(from, to, "")
-		case (analyse.IsPtrType(meanFt) || analyse.IsFuncType(meanFt)) && (analyse.IsPtrType(meanTo) || analyse.IsFuncType(meanTo)):
+		case analyse.GetBaseType(meanFt).Equal(analyse.Usize) && (analyse.IsPtrTypeAndSon(meanTo) || analyse.IsFuncTypeAndSon(meanTo)):
+			return self.builder.CreateIntToPtr(from, to, "")
+		case (analyse.IsPtrTypeAndSon(meanFt) || analyse.IsFuncTypeAndSon(meanFt)) && analyse.GetBaseType(meanTo).Equal(analyse.Usize):
+			return self.builder.CreatePtrToInt(from, to, "")
+		case (analyse.IsPtrTypeAndSon(meanFt) || analyse.IsFuncTypeAndSon(meanFt)) && (analyse.IsPtrTypeAndSon(meanTo) || analyse.IsFuncTypeAndSon(meanTo)):
 			return self.builder.CreatePointerCast(from, to, "")
 		default:
 			panic("")

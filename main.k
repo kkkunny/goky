@@ -1,9 +1,10 @@
-import std.os
-import std.c
+type A bool
 
 @extern(main)
 func main()u8{
-    let s = c"hello world"
-    c:__c_puts(&s as *i8)
+    let a: A = true
+    if a{
+        return 1
+    }
     return 0
 }

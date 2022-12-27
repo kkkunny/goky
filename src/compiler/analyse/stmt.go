@@ -227,7 +227,7 @@ func analyseIfElse(ctx *blockContext, ast parse.IfElse) (*IfElse, utils.Error, b
 	if err != nil {
 		return nil, err, false
 	}
-	cond, err = expectExpr(ast.Cond.Position, Bool, cond)
+	cond, err = expectExprAndSon(ast.Cond.Position, Bool, cond)
 	if err != nil {
 		return nil, err, false
 	}
@@ -279,7 +279,7 @@ func analyseFor(ctx *blockContext, ast parse.For) (*Loop, utils.Error) {
 	if err != nil {
 		return nil, err
 	}
-	cond, err = expectExpr(ast.Cond.Position, Bool, cond)
+	cond, err = expectExprAndSon(ast.Cond.Position, Bool, cond)
 	if err != nil {
 		return nil, err
 	}

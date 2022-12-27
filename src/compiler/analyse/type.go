@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
+	stlos "github.com/kkkunny/stl/os"
+	"github.com/kkkunny/stl/set"
 	"github.com/kkkunny/stl/table"
 	"strings"
 )
@@ -14,29 +16,35 @@ type Type interface {
 }
 
 var (
-	None = &typeBase{Name: "none"}
+	None = &typeBasic{Name: "none"}
 
-	I8    = &typeBase{Name: "i8"}
-	I16   = &typeBase{Name: "i16"}
-	I32   = &typeBase{Name: "i32"}
-	I64   = &typeBase{Name: "i64"}
-	Isize = &typeBase{Name: "isize"}
+	I8    = &typeBasic{Name: "i8"}
+	I16   = &typeBasic{Name: "i16"}
+	I32   = &typeBasic{Name: "i32"}
+	I64   = &typeBasic{Name: "i64"}
+	Isize = &typeBasic{Name: "isize"}
 
-	U8    = &typeBase{Name: "u8"}
-	U16   = &typeBase{Name: "u16"}
-	U32   = &typeBase{Name: "u32"}
-	U64   = &typeBase{Name: "u64"}
-	Usize = &typeBase{Name: "usize"}
+	U8    = &typeBasic{Name: "u8"}
+	U16   = &typeBasic{Name: "u16"}
+	U32   = &typeBasic{Name: "u32"}
+	U64   = &typeBasic{Name: "u64"}
+	Usize = &typeBasic{Name: "usize"}
 
-	F32 = &typeBase{Name: "f32"}
-	F64 = &typeBase{Name: "f64"}
+	F32 = &typeBasic{Name: "f32"}
+	F64 = &typeBasic{Name: "f64"}
 
-	Bool = &typeBase{Name: "bool"}
+	Bool = &typeBasic{Name: "bool"}
 )
 
-// typeBase 空类型
-type typeBase struct {
+// typeBasic 基础类型
+type typeBasic struct {
 	Name string
+}
+
+// IsBasicType 是否是基础类型
+func IsBasicType(t Type) bool {
+	_, ok := t.(*typeBasic)
+	return ok
 }
 
 // IsNoneType 是否是空类型
@@ -49,9 +57,19 @@ func IsNumberType(t Type) bool {
 	return IsIntType(t) || IsFloatType(t)
 }
 
+// IsNumberTypeAndSon 是否是数字类型及其子类型
+func IsNumberTypeAndSon(t Type) bool {
+	return IsNumberType(GetBaseType(t))
+}
+
 // IsIntType 是否是整型
 func IsIntType(t Type) bool {
 	return IsSintType(t) || IsUintType(t)
+}
+
+// IsIntTypeAndSon 是否是整型及其子类型
+func IsIntTypeAndSon(t Type) bool {
+	return IsIntType(GetBaseType(t))
 }
 
 // IsSintType 是否是有符号整型
@@ -59,9 +77,19 @@ func IsSintType(t Type) bool {
 	return t == I8 || t == I16 || t == I32 || t == I64 || t == Isize
 }
 
+// IsSintTypeAndSon 是否是有符号整型及其子类型
+func IsSintTypeAndSon(t Type) bool {
+	return IsSintType(GetBaseType(t))
+}
+
 // IsUintType 是否是无符号整型
 func IsUintType(t Type) bool {
 	return t == U8 || t == U16 || t == U32 || t == U64 || t == Usize
+}
+
+// IsUintTypeAndSon 是否是无符号整型及其子类型
+func IsUintTypeAndSon(t Type) bool {
+	return IsUintType(GetBaseType(t))
 }
 
 // IsFloatType 是否是浮点型
@@ -69,17 +97,27 @@ func IsFloatType(t Type) bool {
 	return t == F32 || t == F64
 }
 
+// IsFloatTypeAndSon 是否是浮点型及其子类型
+func IsFloatTypeAndSon(t Type) bool {
+	return IsFloatType(GetBaseType(t))
+}
+
 // IsBoolType 是否是布尔类型
 func IsBoolType(t Type) bool {
 	return t == Bool
 }
 
-func (self typeBase) String() string {
+// IsBoolTypeAndSon 是否是布尔类型及其子类型
+func IsBoolTypeAndSon(t Type) bool {
+	return IsBoolType(GetBaseType(t))
+}
+
+func (self typeBasic) String() string {
 	return self.Name
 }
 
-func (self typeBase) Equal(t Type) bool {
-	if b, ok := t.(*typeBase); ok {
+func (self typeBasic) Equal(t Type) bool {
+	if b, ok := t.(*typeBasic); ok {
 		return self.Name == b.Name
 	}
 	return false
@@ -103,6 +141,11 @@ func NewFuncType(ret Type, params ...Type) *TypeFunc {
 func IsFuncType(t Type) bool {
 	_, ok := t.(*TypeFunc)
 	return ok
+}
+
+// IsFuncTypeAndSon 是否是函数类型及其子类型
+func IsFuncTypeAndSon(t Type) bool {
+	return IsFuncType(GetBaseType(t))
 }
 
 func (self TypeFunc) String() string {
@@ -148,6 +191,11 @@ func IsArrayType(t Type) bool {
 	return ok
 }
 
+// IsArrayTypeAndSon 是否是数组类型及其子类型
+func IsArrayTypeAndSon(t Type) bool {
+	return IsArrayType(GetBaseType(t))
+}
+
 func (self TypeArray) String() string {
 	return fmt.Sprintf("[%d]%s", self.Size, self.Elem)
 }
@@ -173,6 +221,11 @@ func NewTupleType(elems ...Type) *TypeTuple {
 func IsTupleType(t Type) bool {
 	_, ok := t.(*TypeTuple)
 	return ok
+}
+
+// IsTupleTypeAndSon 是否是元组类型及其子类型
+func IsTupleTypeAndSon(t Type) bool {
+	return IsTupleType(GetBaseType(t))
 }
 
 func (self TypeTuple) String() string {
@@ -212,6 +265,11 @@ func NewStructType(fields *table.LinkedHashMap[string, Type]) *TypeStruct {
 func IsStructType(t Type) bool {
 	_, ok := t.(*TypeStruct)
 	return ok
+}
+
+// IsStructTypeAndSon 是否是结构体类型及其子类型
+func IsStructTypeAndSon(t Type) bool {
+	return IsStructType(GetBaseType(t))
 }
 
 func (self TypeStruct) String() string {
@@ -259,6 +317,11 @@ func IsPtrType(t Type) bool {
 	return ok
 }
 
+// IsPtrTypeAndSon 是否是指针类型及其子类型
+func IsPtrTypeAndSon(t Type) bool {
+	return IsPtrType(GetBaseType(t))
+}
+
 func (self TypePtr) String() string {
 	return "*" + self.Elem.String()
 }
@@ -268,6 +331,83 @@ func (self TypePtr) Equal(t Type) bool {
 		return self.Elem.Equal(a.Elem)
 	}
 	return false
+}
+
+// Typedef 类型定义
+type Typedef struct {
+	Pkg  stlos.Path
+	Name string
+	Dst  Type
+}
+
+// NewTypedef 新建类型定义
+func NewTypedef(pkg stlos.Path, name string, dst Type) *Typedef {
+	return &Typedef{
+		Pkg:  pkg,
+		Name: name,
+		Dst:  dst,
+	}
+}
+
+// IsTypedef 是否是类型定义
+func IsTypedef(t Type) bool {
+	_, ok := t.(*Typedef)
+	return ok
+}
+
+func (self Typedef) String() string {
+	return self.Pkg.String() + "." + self.Name
+}
+
+func (self Typedef) Equal(t Type) bool {
+	if td, ok := t.(*Typedef); ok && self.Pkg == td.Pkg && self.Name == td.Name {
+		return true
+	}
+	return false
+}
+
+// GetBaseType 获取底层类型
+func GetBaseType(t Type) Type {
+	switch typ := t.(type) {
+	case *Typedef:
+		return GetBaseType(typ.Dst)
+	default:
+		return typ
+	}
+}
+
+// GetDepthBaseType 获取最底层类型
+func GetDepthBaseType(t Type) Type {
+	switch typ := t.(type) {
+	case *typeBasic:
+		return typ
+	case *TypeFunc:
+		params := make([]Type, len(typ.Params))
+		for i, p := range typ.Params {
+			params[i] = GetBaseType(p)
+		}
+		return NewFuncType(GetBaseType(typ.Ret), params...)
+	case *TypePtr:
+		return NewPtrType(GetBaseType(typ.Elem))
+	case *TypeArray:
+		return NewArrayType(typ.Size, GetBaseType(typ.Elem))
+	case *TypeTuple:
+		elems := make([]Type, len(typ.Elems))
+		for i, p := range typ.Elems {
+			elems[i] = GetBaseType(p)
+		}
+		return NewTupleType(elems...)
+	case *TypeStruct:
+		fields := table.NewLinkedHashMap[string, Type]()
+		for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
+			fields.Set(iter.Key(), GetBaseType(iter.Value()))
+		}
+		return NewStructType(fields)
+	case *Typedef:
+		return GetBaseType(typ.Dst)
+	default:
+		panic("")
+	}
 }
 
 // *********************************************************************************************************************
@@ -307,6 +447,9 @@ func analyseType(ctx *packageContext, ast *parse.Type) (Type, utils.Error) {
 		case "bool":
 			return Bool, nil
 		default:
+			if td, ok := ctx.typedefs[ast.Ident.Name.Value]; ok {
+				return td.Second, nil
+			}
 			return nil, utils.Errorf(ast.Ident.Position, "unknown identifier")
 		}
 	case ast.Func != nil:
@@ -381,6 +524,62 @@ func analyseType(ctx *packageContext, ast *parse.Type) (Type, utils.Error) {
 			return nil, err
 		}
 		return NewPtrType(elem), nil
+	default:
+		panic("")
+	}
+}
+
+// 检查类型循环引用
+// 只允许元组和结构体循环引用指针
+func checkTypeCircle(tmp *set.LinkedHashSet[*Typedef], t Type) bool {
+	if t == nil {
+		return false
+	}
+	switch typ := t.(type) {
+	case *typeBasic:
+		return false
+	case *TypeFunc:
+		if IsTupleType(tmp.Last().Dst) || IsStructType(tmp.Last().Dst) {
+			return false
+		}
+		if checkTypeCircle(tmp, typ.Ret) {
+			return true
+		}
+		for _, p := range typ.Params {
+			if checkTypeCircle(tmp, p) {
+				return true
+			}
+		}
+		return false
+	case *TypePtr:
+		if IsTupleType(tmp.Last().Dst) || IsStructType(tmp.Last().Dst) {
+			return false
+		}
+		return checkTypeCircle(tmp, typ.Elem)
+	case *TypeArray:
+		return checkTypeCircle(tmp, typ.Elem)
+	case *TypeTuple:
+		for _, e := range typ.Elems {
+			if checkTypeCircle(tmp, e) {
+				return true
+			}
+		}
+		return false
+	case *TypeStruct:
+		for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
+			if checkTypeCircle(tmp, iter.Value()) {
+				return true
+			}
+		}
+		return false
+	case *Typedef:
+		if !tmp.Add(typ) {
+			return true
+		}
+		defer func() {
+			tmp.Remove(typ)
+		}()
+		return checkTypeCircle(tmp, typ.Dst)
 	default:
 		panic("")
 	}

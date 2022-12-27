@@ -57,7 +57,8 @@ type GlobalVariable struct {
 
 // GlobalNoAttr 全局不带属性
 type GlobalNoAttr struct {
-	Import *Import `@@`
+	Import  *Import  `@@`
+	TypeDef *Typedef `| @@`
 }
 
 // Import 导入
@@ -65,4 +66,11 @@ type Import struct {
 	utils.Position
 	Packages []Name `"import" @@ ("." @@)*`
 	Alias    *Name  `("as" @@)?`
+}
+
+// Typedef 类型定义
+type Typedef struct {
+	utils.Position
+	Name Name `"type" @@`
+	Dst  Type `@@`
 }

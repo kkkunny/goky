@@ -3,7 +3,10 @@ package analyse
 import (
 	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/stl/list"
 	stlos "github.com/kkkunny/stl/os"
+	"github.com/kkkunny/stl/set"
+	"github.com/kkkunny/stl/types"
 )
 
 // *********************************************************************************************************************
@@ -19,7 +22,7 @@ func AnalyseMain(ast parse.Package) (*ProgramContext, error) {
 	return ctx, nil
 }
 
-// analyseNoMain 作为辅包进行语义分析
+// 作为辅包进行语义分析
 func analyseNoMain(ctx *packageContext, ast parse.Package) error {
 	// 包导入
 	if len(ast.Globals) > 0 {
@@ -86,9 +89,71 @@ func analyseNoMain(ctx *packageContext, ast parse.Package) error {
 
 // 包
 func analysePackage(ctx *packageContext, ast parse.Package) utils.Error {
+	// 类型定义
+	err := analysePackageTypeDef(ctx, ast.Globals)
+	if err != nil {
+		return err
+	}
+	// 变量声明
+	err = analysePackageVariableDecl(ctx, ast.Globals)
+	if err != nil {
+		return err
+	}
+	// 变量定义
+	err = analysePackageVariableDef(ctx, ast.Globals)
+	return err
+}
+
+// 包 类型定义
+func analysePackageTypeDef(ctx *packageContext, asts []parse.Global) utils.Error {
 	var errors []utils.Error
-	// 函数声明
-	for _, ag := range ast.Globals {
+	typedefs := list.NewSingleLinkedList[*parse.Typedef]()
+	// 定义
+	for _, ag := range asts {
+		if ag.GlobalNoAttr == nil || ag.GlobalNoAttr.TypeDef == nil {
+			continue
+		}
+
+		ast := ag.GlobalNoAttr.TypeDef
+		if _, ok := ctx.typedefs[ast.Name.Value]; ok {
+			errors = append(errors, utils.Errorf(ast.Name.Position, "duplicate identifier"))
+			continue
+		}
+
+		ctx.typedefs[ast.Name.Value] = types.NewPair(false, NewTypedef(ctx.path, ast.Name.Value, nil))
+		typedefs.Add(ast)
+	}
+	if len(errors) == 1 {
+		return errors[0]
+	} else if len(errors) > 1 {
+		return utils.NewMultiError(errors...)
+	}
+	// 解析目标类型
+	for iter := typedefs.Iterator(); iter.HasValue(); iter.Next() {
+		if err := analyseTypedef(ctx, *iter.Value()); err != nil {
+			errors = append(errors, err)
+		}
+	}
+	// 循环引用检测
+	for iter := typedefs.Iterator(); iter.HasValue(); iter.Next() {
+		ast := iter.Value()
+		if checkTypeCircle(set.NewLinkedHashSet[*Typedef](), ctx.typedefs[ast.Name.Value].Second) {
+			errors = append(errors, utils.Errorf(ast.Name.Position, "circular reference"))
+		}
+	}
+	if len(errors) == 0 {
+		return nil
+	} else if len(errors) == 1 {
+		return errors[0]
+	} else {
+		return utils.NewMultiError(errors...)
+	}
+}
+
+// 包 变量声明
+func analysePackageVariableDecl(ctx *packageContext, asts []parse.Global) utils.Error {
+	var errors []utils.Error
+	for _, ag := range asts {
 		if ag.GlobalWithAttr == nil {
 			continue
 		}
@@ -111,9 +176,19 @@ func analysePackage(ctx *packageContext, ast parse.Package) utils.Error {
 			panic("")
 		}
 	}
+	if len(errors) == 0 {
+		return nil
+	} else if len(errors) == 1 {
+		return errors[0]
+	} else {
+		return utils.NewMultiError(errors...)
+	}
+}
 
-	// 函数定义
-	for _, ag := range ast.Globals {
+// 包 变量定义
+func analysePackageVariableDef(ctx *packageContext, asts []parse.Global) utils.Error {
+	var errors []utils.Error
+	for _, ag := range asts {
 		if ag.GlobalWithAttr == nil {
 			continue
 		}
@@ -130,7 +205,6 @@ func analysePackage(ctx *packageContext, ast parse.Package) utils.Error {
 			panic("")
 		}
 	}
-
 	if len(errors) == 0 {
 		return nil
 	} else if len(errors) == 1 {

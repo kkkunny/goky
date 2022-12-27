@@ -12,7 +12,8 @@ type CodeGenerator struct {
 	builder  llvm.Builder
 	function llvm.Value
 
-	vars map[analyse.Expr]llvm.Value
+	vars  map[analyse.Expr]llvm.Value
+	types map[string]llvm.Type
 
 	// loop
 	cb, eb llvm.BasicBlock
@@ -28,6 +29,7 @@ func NewCodeGenerator() *CodeGenerator {
 		module:  ctx.NewModule(""),
 		builder: ctx.NewBuilder(),
 		vars:    make(map[analyse.Expr]llvm.Value),
+		types:   make(map[string]llvm.Type),
 	}
 	cg.init()
 	return cg
@@ -67,7 +69,7 @@ func (self *CodeGenerator) Codegen(mean analyse.ProgramContext) llvm.Module {
 					self.builder.CreateStore(f.Param(i), param)
 					self.vars[p] = param
 				}
-				
+
 				self.codegenBlock(*global.Body)
 
 				self.defers = nil

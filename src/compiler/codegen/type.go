@@ -19,19 +19,76 @@ func (self *CodeGenerator) codegenType(mean analyse.Type) llvm.Type {
 		elem := self.codegenType(typ.Elem)
 		return llvm.ArrayType(elem, int(typ.Size))
 	case *analyse.TypeTuple:
-		elems := make([]llvm.Type, len(typ.Elems))
-		for i, e := range typ.Elems {
-			elems[i] = self.codegenType(e)
+		if len(typ.Elems) <= 3 {
+			elems := make([]llvm.Type, len(typ.Elems))
+			for i, e := range typ.Elems {
+				elems[i] = self.codegenType(e)
+			}
+			return self.ctx.StructType(elems, false)
+		} else {
+			key := typ.String()
+			if t, ok := self.types[key]; ok {
+				return t
+			}
+			td := self.ctx.StructCreateNamed("")
+			elems := make([]llvm.Type, len(typ.Elems))
+			for i, e := range typ.Elems {
+				elems[i] = self.codegenType(e)
+			}
+			td.StructSetBody(elems, false)
+			self.types[key] = td
+			return td
 		}
-		return self.ctx.StructType(elems, false)
 	case *analyse.TypeStruct:
-		elems := make([]llvm.Type, typ.Fields.Length())
-		for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
-			elems[iter.Index()] = self.codegenType(iter.Value())
+		if typ.Fields.Length() <= 3 {
+			elems := make([]llvm.Type, typ.Fields.Length())
+			for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
+				elems[iter.Index()] = self.codegenType(iter.Value())
+			}
+			return self.ctx.StructType(elems, false)
+		} else {
+			key := typ.String()
+			if t, ok := self.types[key]; ok {
+				return t
+			}
+			td := self.ctx.StructCreateNamed("")
+			elems := make([]llvm.Type, typ.Fields.Length())
+			for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
+				elems[iter.Index()] = self.codegenType(iter.Value())
+			}
+			td.StructSetBody(elems, false)
+			self.types[key] = td
+			return td
 		}
-		return self.ctx.StructType(elems, false)
 	case *analyse.TypePtr:
 		return llvm.PointerType(self.codegenType(typ.Elem), 0)
+	case *analyse.Typedef:
+		if !analyse.IsTupleType(typ.Dst) && !analyse.IsStructType(typ.Dst) {
+			return self.codegenType(typ.Dst)
+		}
+		key := typ.String()
+		if t, ok := self.types[key]; ok {
+			return t
+		}
+		td := self.ctx.StructCreateNamed("")
+		self.types[key] = td
+		switch dst := typ.Dst.(type) {
+		case *analyse.TypeTuple:
+			elems := make([]llvm.Type, len(dst.Elems))
+			for i, e := range dst.Elems {
+				elems[i] = self.codegenType(e)
+			}
+			td.StructSetBody(elems, false)
+		case *analyse.TypeStruct:
+			elems := make([]llvm.Type, dst.Fields.Length())
+			for iter := dst.Fields.Begin(); iter.HasValue(); iter.Next() {
+				elems[iter.Index()] = self.codegenType(iter.Value())
+			}
+			td.StructSetBody(elems, false)
+		default:
+			panic("")
+		}
+		return td
 	default:
 		switch {
 		case analyse.IsNoneType(typ):

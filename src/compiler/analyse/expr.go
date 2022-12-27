@@ -61,13 +61,14 @@ func (self Float) IsTemporary() bool {
 
 // Boolean 布尔数
 type Boolean struct {
+	Type  Type
 	Value bool
 }
 
 func (self Boolean) stmt() {}
 
 func (self Boolean) GetType() Type {
-	return Bool
+	return self.Type
 }
 
 func (self Boolean) GetMut() bool {
@@ -163,7 +164,7 @@ func (self Param) IsTemporary() bool {
 
 // Array 数组
 type Array struct {
-	Type  *TypeArray
+	Type  Type
 	Elems []Expr
 }
 
@@ -183,7 +184,7 @@ func (self Array) IsTemporary() bool {
 
 // EmptyArray 空数组
 type EmptyArray struct {
-	Type *TypeArray
+	Type Type
 }
 
 func (self EmptyArray) stmt() {}
@@ -302,7 +303,7 @@ func (self Select) IsTemporary() bool {
 
 // Tuple 元组
 type Tuple struct {
-	Type  *TypeTuple
+	Type  Type
 	Elems []Expr
 }
 
@@ -322,7 +323,7 @@ func (self Tuple) IsTemporary() bool {
 
 // EmptyTuple 空元组
 type EmptyTuple struct {
-	Type *TypeTuple
+	Type Type
 }
 
 func (self EmptyTuple) stmt() {}
@@ -341,7 +342,7 @@ func (self EmptyTuple) IsTemporary() bool {
 
 // Struct 结构体
 type Struct struct {
-	Type   *TypeStruct
+	Type   Type
 	Fields []Expr
 }
 
@@ -361,7 +362,7 @@ func (self Struct) IsTemporary() bool {
 
 // EmptyStruct 空结构体
 type EmptyStruct struct {
-	Type *TypeStruct
+	Type Type
 }
 
 func (self EmptyStruct) stmt() {}
@@ -387,7 +388,7 @@ type GetField struct {
 func (self GetField) stmt() {}
 
 func (self GetField) GetType() Type {
-	return self.From.GetType().(*TypeStruct).Fields.Get(self.Index)
+	return GetBaseType(self.From.GetType()).(*TypeStruct).Fields.Get(self.Index)
 }
 
 func (self GetField) GetMut() bool {
@@ -439,11 +440,11 @@ func analyseAssign(ctx *blockContext, expect Type, ast parse.Assign) (Expr, util
 		lt := left.GetType()
 		switch ast.Suffix.Opera {
 		case "+=", "-=", "*=", "/=", "%=":
-			if !IsNumberType(lt) {
+			if !IsNumberTypeAndSon(lt) {
 				return nil, utils.Errorf(ast.Left.Position, "expect a number")
 			}
 		case "&=", "|=", "^=", "<<=", ">>=":
-			if !IsIntType(lt) {
+			if !IsIntTypeAndSon(lt) {
 				return nil, utils.Errorf(ast.Left.Position, "expect a integer")
 			}
 		}
@@ -469,20 +470,20 @@ func analyseLogicOpera(ctx *blockContext, expect Type, ast parse.LogicOpera) (Ex
 		return analyseEqual(ctx, expect, ast.Left)
 	} else {
 		leftPos := ast.Position
-		left, err := analyseEqual(ctx, Bool, ast.Left)
+		left, err := analyseEqual(ctx, expect, ast.Left)
 		if err != nil {
 			return nil, err
 		}
-		left, err = expectExpr(ast.Left.Position, Bool, left)
+		left, err = expectExprAndSon(ast.Left.Position, Bool, left)
 		if err != nil {
 			return nil, err
 		}
 		for _, next := range ast.Next {
-			right, err := analyseEqual(ctx, Bool, next.Right)
+			right, err := analyseEqual(ctx, left.GetType(), next.Right)
 			if err != nil {
 				return nil, err
 			}
-			right, err = expectExpr(next.Right.Position, Bool, right)
+			right, err = expectExpr(next.Right.Position, left.GetType(), right)
 			if err != nil {
 				return nil, err
 			}
@@ -503,7 +504,7 @@ func analyseEqual(ctx *blockContext, expect Type, ast parse.Equal) (Expr, utils.
 		return analyseAddOrSub(ctx, expect, ast.Left)
 	} else {
 		leftPos := ast.Position
-		left, err := analyseAddOrSub(ctx, expect, ast.Left)
+		left, err := analyseAddOrSub(ctx, nil, ast.Left)
 		if err != nil {
 			return nil, err
 		}
@@ -511,7 +512,7 @@ func analyseEqual(ctx *blockContext, expect Type, ast parse.Equal) (Expr, utils.
 			lt := left.GetType()
 			if IsNoneType(lt) {
 				return nil, utils.Errorf(leftPos, "expect a value")
-			} else if next.Opera != "==" && next.Opera != "!=" && !IsNumberType(lt) {
+			} else if next.Opera != "==" && next.Opera != "!=" && !IsNumberTypeAndSon(lt) {
 				return nil, utils.Errorf(leftPos, "expect a number")
 			}
 			right, err := analyseAddOrSub(ctx, lt, next.Right)
@@ -545,7 +546,7 @@ func analyseAddOrSub(ctx *blockContext, expect Type, ast parse.AddOrSub) (Expr, 
 		}
 		for _, next := range ast.Next {
 			lt := left.GetType()
-			if !IsNumberType(lt) {
+			if !IsNumberTypeAndSon(lt) {
 				return nil, utils.Errorf(leftPos, "expect a number")
 			}
 			right, err := analyseMulOrDivOrMod(ctx, lt, next.Right)
@@ -579,7 +580,7 @@ func analyseMulOrDivOrMod(ctx *blockContext, expect Type, ast parse.MulOrDivOrMo
 		}
 		for _, next := range ast.Next {
 			lt := left.GetType()
-			if !IsNumberType(lt) {
+			if !IsNumberTypeAndSon(lt) {
 				return nil, utils.Errorf(leftPos, "expect a number")
 			}
 			right, err := analyseByteOpera(ctx, lt, next.Right)
@@ -613,7 +614,7 @@ func analyseByteOpera(ctx *blockContext, expect Type, ast parse.ByteOpera) (Expr
 		}
 		for _, next := range ast.Next {
 			lt := left.GetType()
-			if !IsIntType(lt) {
+			if !IsIntTypeAndSon(lt) {
 				return nil, utils.Errorf(leftPos, "expect a integer")
 			}
 			right, err := analyseUnaryPostfix(ctx, lt, next.Right)
@@ -653,7 +654,7 @@ func analyseUnaryPostfix(ctx *blockContext, expect Type, ast parse.UnaryPostfix)
 					}
 					leftPos = ast.Unary.Position
 				}
-				cond, err := expectExpr(leftPos, Bool, left)
+				cond, err := expectExprAndSon(leftPos, Bool, left)
 				if err != nil {
 					return nil, err
 				}
@@ -661,12 +662,11 @@ func analyseUnaryPostfix(ctx *blockContext, expect Type, ast parse.UnaryPostfix)
 				if err != nil {
 					return nil, err
 				}
-				tt := tv.GetType()
-				fv, err := analyseUnaryPostfix(ctx, tt, suffix.Select.False)
+				fv, err := analyseUnaryPostfix(ctx, tv.GetType(), suffix.Select.False)
 				if err != nil {
 					return nil, err
 				}
-				fv, err = expectExpr(suffix.Select.False.Position, tt, fv)
+				fv, err = expectExpr(suffix.Select.False.Position, tv.GetType(), fv)
 				if err != nil {
 					return nil, err
 				}
@@ -691,10 +691,11 @@ func analyseUnaryPostfix(ctx *blockContext, expect Type, ast parse.UnaryPostfix)
 				ft := left.GetType()
 
 				switch {
-				case IsNumberType(ft) && IsNumberType(to):
-				case ft.Equal(Usize) && (IsPtrType(to) || IsFuncType(to)):
-				case (IsPtrType(ft) || IsFuncType(ft)) && to.Equal(Usize):
-				case (IsPtrType(ft) || IsFuncType(ft)) && (IsPtrType(to) || IsFuncType(to)):
+				case GetDepthBaseType(ft).Equal(GetDepthBaseType(to)):
+				case IsNumberTypeAndSon(ft) && IsNumberTypeAndSon(to):
+				case GetBaseType(ft).Equal(Usize) && (IsPtrTypeAndSon(to) || IsFuncTypeAndSon(to)):
+				case (IsPtrTypeAndSon(ft) || IsFuncTypeAndSon(ft)) && GetBaseType(to).Equal(Usize):
+				case (IsPtrTypeAndSon(ft) || IsFuncTypeAndSon(ft)) && (IsPtrTypeAndSon(to) || IsFuncTypeAndSon(to)):
 				default:
 					return nil, utils.Errorf(leftPos, "can not covert to type `%s`", to)
 				}
@@ -723,13 +724,12 @@ func analyseUnary(ctx *blockContext, expect Type, ast parse.Unary) (Expr, utils.
 			if err != nil {
 				return nil, err
 			}
-			vt := value.GetType()
-			if !IsNumberType(vt) {
+			if !IsNumberTypeAndSon(value.GetType()) {
 				return nil, utils.Errorf(ast.Postfix.Position, "expect a number")
 			}
 			return &Binary{
 				Opera: "-",
-				Left:  getDefaultExprByType(vt),
+				Left:  getDefaultExprByType(value.GetType()),
 				Right: value,
 			}, nil
 		case "~":
@@ -737,15 +737,14 @@ func analyseUnary(ctx *blockContext, expect Type, ast parse.Unary) (Expr, utils.
 			if err != nil {
 				return nil, err
 			}
-			vt := value.GetType()
-			if !IsSintType(vt) {
+			if !IsSintTypeAndSon(value.GetType()) {
 				return nil, utils.Errorf(ast.Postfix.Position, "expect a signed integer")
 			}
 			return &Binary{
 				Opera: "^",
 				Left:  value,
 				Right: &Integer{
-					Type:  vt,
+					Type:  value.GetType(),
 					Value: -1,
 				},
 			}, nil
@@ -754,18 +753,18 @@ func analyseUnary(ctx *blockContext, expect Type, ast parse.Unary) (Expr, utils.
 			if err != nil {
 				return nil, err
 			}
-			value, err = expectExpr(ast.Postfix.Position, Bool, value)
+			value, err = expectExprAndSon(ast.Postfix.Position, Bool, value)
 			if err != nil {
 				return nil, err
 			}
 			return &Unary{
-				Type:  Bool,
+				Type:  value.GetType(),
 				Opera: "!",
 				Value: value,
 			}, nil
 		case "&":
-			if expect != nil && IsPtrType(expect) {
-				expect = expect.(*TypePtr).Elem
+			if expect != nil && IsPtrTypeAndSon(expect) {
+				expect = GetBaseType(expect).(*TypePtr).Elem
 			}
 			value, err := analysePrimaryPostfix(ctx, expect, ast.Postfix)
 			if err != nil {
@@ -788,11 +787,11 @@ func analyseUnary(ctx *blockContext, expect Type, ast parse.Unary) (Expr, utils.
 				return nil, err
 			}
 			vt := value.GetType()
-			if !IsPtrType(vt) {
+			if !IsPtrTypeAndSon(vt) {
 				return nil, utils.Errorf(ast.Postfix.Position, "expect a pointer")
 			}
 			return &Unary{
-				Type:  vt.(*TypePtr).Elem,
+				Type:  GetBaseType(vt).(*TypePtr).Elem,
 				Opera: "*",
 				Value: value,
 			}, nil
@@ -865,7 +864,7 @@ func analyseSinglePrimaryPostfix(ctx *blockContext, expect Type, prefixAst parse
 		if err != nil {
 			return nil, err
 		}
-		ft, ok := f.GetType().(*TypeFunc)
+		ft, ok := GetBaseType(f.GetType()).(*TypeFunc)
 		if !ok {
 			return nil, utils.Errorf(prefixAst.Position, "expect a function")
 		} else if len(ft.Params) != len(suffixAst.Call.Exprs) {
@@ -905,17 +904,18 @@ func analyseSinglePrimaryPostfix(ctx *blockContext, expect Type, prefixAst parse
 			Args:     args,
 		}, nil
 	case suffixAst.Index != nil:
+		// TODO expect
 		prefix, err := analysePrimaryPostfix(ctx, nil, prefixAst)
 		if err != nil {
 			return nil, err
 		}
-		switch pt := prefix.GetType().(type) {
+		switch pt := GetBaseType(prefix.GetType()).(type) {
 		case *TypeArray:
 			index, err := analyseExpr(ctx, Usize, *suffixAst.Index)
 			if err != nil {
 				return nil, err
 			}
-			index, err = expectExpr(suffixAst.Index.Position, Usize, index)
+			index, err = expectExprAndSon(suffixAst.Index.Position, Usize, index)
 			if err != nil {
 				return nil, err
 			}
@@ -929,7 +929,7 @@ func analyseSinglePrimaryPostfix(ctx *blockContext, expect Type, prefixAst parse
 			if err != nil {
 				return nil, err
 			}
-			index, err = expectExpr(suffixAst.Index.Position, Usize, index)
+			index, err = expectExprAndSon(suffixAst.Index.Position, Usize, index)
 			if err != nil {
 				return nil, err
 			}
@@ -956,11 +956,12 @@ func analyseSinglePrimaryPostfix(ctx *blockContext, expect Type, prefixAst parse
 			return nil, utils.Errorf(prefixAst.Position, "expect a array or tuple")
 		}
 	case suffixAst.Dot != nil:
+		// 结构体指针
 		prefix, err := analysePrimaryPostfix(ctx, nil, prefixAst)
 		if err != nil {
 			return nil, err
 		}
-		st, ok := prefix.GetType().(*TypeStruct)
+		st, ok := GetBaseType(prefix.GetType()).(*TypeStruct)
 		if !ok {
 			return nil, utils.Errorf(prefixAst.Position, "expect a struct")
 		} else if !st.Fields.ContainKey(suffixAst.Dot.Value) {
@@ -984,16 +985,16 @@ func analysePrimary(ctx *blockContext, expect Type, ast parse.Primary) (Expr, ut
 		return analyseIdent(ctx, *ast.Ident)
 	case ast.Tuple != nil:
 		if len(ast.Tuple.Exprs) == 0 {
-			if expect == nil || !IsTupleType(expect) {
+			if expect == nil || !IsTupleTypeAndSon(expect) {
 				return nil, utils.Errorf(ast.Position, "expect a tuple type")
 			}
-			return &EmptyTuple{Type: expect.(*TypeTuple)}, nil
-		} else if len(ast.Tuple.Exprs) == 1 && (expect == nil || !IsTupleType(expect) || len(expect.(*TypeTuple).Elems) != 1) {
+			return &EmptyTuple{Type: expect}, nil
+		} else if len(ast.Tuple.Exprs) == 1 && (expect == nil || !IsTupleTypeAndSon(expect) || len(GetBaseType(expect).(*TypeTuple).Elems) != 1) {
 			return analyseExpr(ctx, expect, ast.Tuple.Exprs[0])
 		}
 		expects := make([]Type, len(ast.Tuple.Exprs))
 		if expect != nil {
-			if tt, ok := expect.(*TypeTuple); ok && len(tt.Elems) == len(ast.Tuple.Exprs) {
+			if tt, ok := GetBaseType(expect).(*TypeTuple); ok && len(tt.Elems) == len(ast.Tuple.Exprs) {
 				for i := range expects {
 					expects[i] = tt.Elems[i]
 				}
@@ -1006,20 +1007,24 @@ func analysePrimary(ctx *blockContext, expect Type, ast parse.Primary) (Expr, ut
 		for i, e := range elems {
 			expects[i] = e.GetType()
 		}
+		var rt Type = NewTupleType(expects...)
+		if expect != nil && GetDepthBaseType(expect).Equal(GetDepthBaseType(rt)) {
+			rt = expect
+		}
 		return &Tuple{
-			Type:  NewTupleType(expects...),
+			Type:  rt,
 			Elems: elems,
 		}, nil
 	case ast.Array != nil:
 		if len(ast.Array.Exprs) == 0 {
-			if expect == nil || !IsArrayType(expect) {
+			if expect == nil || !IsArrayTypeAndSon(expect) {
 				return nil, utils.Errorf(ast.Position, "expect a array type")
 			}
-			return &EmptyArray{Type: expect.(*TypeArray)}, nil
+			return &EmptyArray{Type: expect}, nil
 		}
 		expects := make([]Type, len(ast.Array.Exprs))
 		if expect != nil {
-			if at, ok := expect.(*TypeArray); ok && at.Size == uint(len(ast.Array.Exprs)) {
+			if at, ok := GetBaseType(expect).(*TypeArray); ok && at.Size == uint(len(ast.Array.Exprs)) {
 				for i := range expects {
 					expects[i] = at.Elem
 				}
@@ -1036,28 +1041,33 @@ func analysePrimary(ctx *blockContext, expect Type, ast parse.Primary) (Expr, ut
 				errors = append(errors, err)
 			}
 		}
-		if len(errors) == 0 {
-			return &Array{
-				Type:  NewArrayType(uint(len(elems)), elems[0].GetType()),
-				Elems: elems,
-			}, nil
-		} else if len(errors) == 1 {
+		if len(errors) == 1 {
 			return nil, errors[0]
-		} else {
+		} else if len(errors) > 1 {
 			return nil, utils.NewMultiError(errors...)
 		}
+		var rt Type = NewArrayType(uint(len(elems)), elems[0].GetType())
+		if expect != nil && GetDepthBaseType(expect).Equal(GetDepthBaseType(rt)) {
+			rt = expect
+		}
+		return &Array{
+			Type:  rt,
+			Elems: elems,
+		}, nil
 	case ast.Struct != nil:
 		if len(ast.Struct.Exprs) == 0 {
-			if expect == nil || !IsStructType(expect) {
+			if expect == nil || !IsStructTypeAndSon(expect) {
 				return nil, utils.Errorf(ast.Position, "expect a struct type")
 			}
-			return &EmptyStruct{Type: expect.(*TypeStruct)}, nil
+			return &EmptyStruct{Type: expect}, nil
 		}
-		if expect == nil || !IsStructType(expect) || expect.(*TypeStruct).Fields.Length() != len(ast.Struct.Exprs) {
+		if expect == nil || !IsStructTypeAndSon(expect) {
 			return nil, utils.Errorf(ast.Position, "expect a struct type")
+		} else if GetBaseType(expect).(*TypeStruct).Fields.Length() != len(ast.Struct.Exprs) {
+			return nil, utils.Errorf(ast.Position, "expect `%d` fields", len(ast.Struct.Exprs))
 		}
 		expects := make([]Type, len(ast.Struct.Exprs))
-		for iter := expect.(*TypeStruct).Fields.Begin(); iter.HasValue(); iter.Next() {
+		for iter := GetBaseType(expect).(*TypeStruct).Fields.Begin(); iter.HasValue(); iter.Next() {
 			expects[iter.Index()] = iter.Value()
 		}
 		fields, err := analyseExprList(ctx, expects, *ast.Struct)
@@ -1068,7 +1078,7 @@ func analysePrimary(ctx *blockContext, expect Type, ast parse.Primary) (Expr, ut
 			expects[i] = e.GetType()
 		}
 		return &Struct{
-			Type:   expect.(*TypeStruct),
+			Type:   expect,
 			Fields: fields,
 		}, nil
 	default:
@@ -1080,15 +1090,15 @@ func analysePrimary(ctx *blockContext, expect Type, ast parse.Primary) (Expr, ut
 func analyseConstant(expect Type, ast parse.Constant) (Expr, utils.Error) {
 	switch {
 	case ast.Null != nil:
-		if expect == nil || (!IsPtrType(expect) && !IsFuncType(expect)) {
+		if expect == nil || (!IsPtrTypeAndSon(expect) && !IsFuncTypeAndSon(expect)) {
 			return nil, utils.Errorf(ast.Position, "expect a pointer type")
 		}
 		return &Null{Type: expect}, nil
 	case ast.Int != nil:
-		if expect == nil || !IsNumberType(expect) {
+		if expect == nil || !IsNumberTypeAndSon(expect) {
 			expect = Isize
 		}
-		if IsIntType(expect) {
+		if IsIntTypeAndSon(expect) {
 			return &Integer{
 				Type:  expect,
 				Value: *ast.Int,
@@ -1100,7 +1110,7 @@ func analyseConstant(expect Type, ast parse.Constant) (Expr, utils.Error) {
 			}, nil
 		}
 	case ast.Float != nil:
-		if expect == nil || !IsFloatType(expect) {
+		if expect == nil || !IsFloatTypeAndSon(expect) {
 			expect = F64
 		}
 		return &Float{
@@ -1108,72 +1118,40 @@ func analyseConstant(expect Type, ast parse.Constant) (Expr, utils.Error) {
 			Value: *ast.Float,
 		}, nil
 	case ast.Bool != nil:
-		return &Boolean{Value: bool(*ast.Bool)}, nil
+		if expect == nil || !IsBoolTypeAndSon(expect) {
+			expect = Bool
+		}
+		return &Boolean{
+			Type:  expect,
+			Value: bool(*ast.Bool),
+		}, nil
 	case ast.Char != nil:
-		if expect == nil || !IsNumberType(expect) {
-			expect = I32
-		}
-		if IsIntType(expect) {
-			return &Integer{
-				Type:  expect,
-				Value: int64(*ast.Char),
-			}, nil
-		} else {
-			return &Float{
-				Type:  expect,
-				Value: float64(*ast.Char),
-			}, nil
-		}
+		return &Integer{
+			Type:  I32,
+			Value: int64(*ast.Char),
+		}, nil
 	case ast.CString != nil:
-		var elemExpect Type
-		if expect == nil || !IsArrayType(expect) || expect.(*TypeArray).Size != uint(len(*ast.CString)) || !IsNumberType(expect.(*TypeArray).Elem) {
-			expect = NewArrayType(uint(len(*ast.CString)), I8)
-			elemExpect = I8
-		} else {
-			elemExpect = expect.(*TypeArray).Elem
-		}
 		elems := make([]Expr, len(*ast.CString))
 		for i, e := range *ast.CString {
-			if IsIntType(elemExpect) {
-				elems[i] = &Integer{
-					Type:  elemExpect,
-					Value: int64(e),
-				}
-			} else {
-				elems[i] = &Float{
-					Type:  elemExpect,
-					Value: float64(e),
-				}
+			elems[i] = &Integer{
+				Type:  I8,
+				Value: int64(e),
 			}
 		}
 		return &Array{
-			Type:  expect.(*TypeArray),
+			Type:  NewArrayType(uint(len(elems)), I8),
 			Elems: elems,
 		}, nil
 	case ast.String != nil:
-		var elemExpect Type
-		if expect == nil || !IsArrayType(expect) || expect.(*TypeArray).Size != uint(len(*ast.String)) || !IsNumberType(expect.(*TypeArray).Elem) {
-			expect = NewArrayType(uint(len(*ast.String)), I32)
-			elemExpect = I32
-		} else {
-			elemExpect = expect.(*TypeArray).Elem
-		}
 		elems := make([]Expr, len(*ast.String))
 		for i, e := range *ast.String {
-			if IsIntType(elemExpect) {
-				elems[i] = &Integer{
-					Type:  elemExpect,
-					Value: int64(e),
-				}
-			} else {
-				elems[i] = &Float{
-					Type:  elemExpect,
-					Value: float64(e),
-				}
+			elems[i] = &Integer{
+				Type:  I32,
+				Value: int64(e),
 			}
 		}
 		return &Array{
-			Type:  expect.(*TypeArray),
+			Type:  NewArrayType(uint(len(elems)), I32),
 			Elems: elems,
 		}, nil
 	default:
@@ -1198,14 +1176,14 @@ func analyseConstantExpr(expect Type, ast parse.Expr) (Expr, utils.Error) {
 			return analyseConstant(expect, *primary.Constant)
 		case primary.Array != nil:
 			if len(primary.Array.Exprs) == 0 {
-				if expect == nil || !IsArrayType(expect) {
+				if expect == nil || !IsArrayTypeAndSon(expect) {
 					return nil, utils.Errorf(primary.Position, "expect a array type")
 				}
-				return &EmptyArray{Type: expect.(*TypeArray)}, nil
+				return &EmptyArray{Type: expect}, nil
 			}
 			expects := make([]Type, len(primary.Array.Exprs))
 			if expect != nil {
-				if at, ok := expect.(*TypeArray); ok && at.Size == uint(len(primary.Array.Exprs)) {
+				if at, ok := GetBaseType(expect).(*TypeArray); ok && at.Size == uint(len(primary.Array.Exprs)) {
 					for i := range expects {
 						expects[i] = at.Elem
 					}
@@ -1222,28 +1200,31 @@ func analyseConstantExpr(expect Type, ast parse.Expr) (Expr, utils.Error) {
 					errors = append(errors, err)
 				}
 			}
-			if len(errors) == 0 {
-				return &Array{
-					Type:  NewArrayType(uint(len(elems)), elems[0].GetType()),
-					Elems: elems,
-				}, nil
-			} else if len(errors) == 1 {
+			if len(errors) == 1 {
 				return nil, errors[0]
-			} else {
+			} else if len(errors) > 1 {
 				return nil, utils.NewMultiError(errors...)
 			}
+			var rt Type = NewArrayType(uint(len(elems)), elems[0].GetType())
+			if expect != nil && GetDepthBaseType(expect).Equal(GetDepthBaseType(rt)) {
+				rt = expect
+			}
+			return &Array{
+				Type:  rt,
+				Elems: elems,
+			}, nil
 		case primary.Tuple != nil:
 			if len(primary.Tuple.Exprs) == 0 {
-				if expect == nil || !IsTupleType(expect) {
+				if expect == nil || !IsTupleTypeAndSon(expect) {
 					return nil, utils.Errorf(primary.Position, "expect a tuple type")
 				}
-				return &EmptyTuple{Type: expect.(*TypeTuple)}, nil
-			} else if len(primary.Tuple.Exprs) == 1 && (expect == nil || !IsTupleType(expect) || len(expect.(*TypeTuple).Elems) != 1) {
+				return &EmptyTuple{Type: expect}, nil
+			} else if len(primary.Tuple.Exprs) == 1 && (expect == nil || !IsTupleTypeAndSon(expect) || len(GetBaseType(expect).(*TypeTuple).Elems) != 1) {
 				return analyseConstantExpr(expect, primary.Tuple.Exprs[0])
 			}
 			expects := make([]Type, len(primary.Tuple.Exprs))
 			if expect != nil {
-				if tt, ok := expect.(*TypeTuple); ok && len(tt.Elems) == len(primary.Tuple.Exprs) {
+				if tt, ok := GetBaseType(expect).(*TypeTuple); ok && len(tt.Elems) == len(primary.Tuple.Exprs) {
 					for i := range expects {
 						expects[i] = tt.Elems[i]
 					}
@@ -1256,22 +1237,28 @@ func analyseConstantExpr(expect Type, ast parse.Expr) (Expr, utils.Error) {
 			for i, e := range elems {
 				expects[i] = e.GetType()
 			}
+			var rt Type = NewTupleType(expects...)
+			if expect != nil && GetDepthBaseType(expect).Equal(GetDepthBaseType(rt)) {
+				rt = expect
+			}
 			return &Tuple{
-				Type:  NewTupleType(expects...),
+				Type:  rt,
 				Elems: elems,
 			}, nil
 		case primary.Struct != nil:
 			if len(primary.Struct.Exprs) == 0 {
-				if expect == nil || !IsStructType(expect) {
+				if expect == nil || !IsStructTypeAndSon(expect) {
 					return nil, utils.Errorf(primary.Position, "expect a struct type")
 				}
-				return &EmptyStruct{Type: expect.(*TypeStruct)}, nil
+				return &EmptyStruct{Type: expect}, nil
 			}
-			if expect == nil || !IsStructType(expect) || expect.(*TypeStruct).Fields.Length() != len(primary.Struct.Exprs) {
+			if expect == nil || !IsStructTypeAndSon(expect) {
 				return nil, utils.Errorf(primary.Position, "expect a struct type")
+			} else if GetBaseType(expect).(*TypeStruct).Fields.Length() != len(primary.Struct.Exprs) {
+				return nil, utils.Errorf(ast.Position, "expect `%d` fields", len(primary.Struct.Exprs))
 			}
 			expects := make([]Type, len(primary.Struct.Exprs))
-			for iter := expect.(*TypeStruct).Fields.Begin(); iter.HasValue(); iter.Next() {
+			for iter := GetBaseType(expect).(*TypeStruct).Fields.Begin(); iter.HasValue(); iter.Next() {
 				expects[iter.Index()] = iter.Value()
 			}
 			fields, err := analyseConstantExprList(expects, *primary.Struct)
@@ -1282,7 +1269,7 @@ func analyseConstantExpr(expect Type, ast parse.Expr) (Expr, utils.Error) {
 				expects[i] = e.GetType()
 			}
 			return &Struct{
-				Type:   expect.(*TypeStruct),
+				Type:   expect,
 				Fields: fields,
 			}, nil
 		}
@@ -1298,10 +1285,18 @@ func expectExpr(pos utils.Position, expect Type, expr Expr) (Expr, utils.Error) 
 	return expr, nil
 }
 
+// 期待指定类型的表达式及其子类型
+func expectExprAndSon(pos utils.Position, expect Type, expr Expr) (Expr, utils.Error) {
+	if !GetDepthBaseType(expr.GetType()).Equal(GetDepthBaseType(expect)) {
+		return nil, utils.Errorf(pos, "expect type `%s`", expect)
+	}
+	return expr, nil
+}
+
 // 获取类型默认值
 func getDefaultExprByType(t Type) Expr {
-	switch typ := t.(type) {
-	case *typeBase:
+	switch GetBaseType(t).(type) {
+	case *typeBasic:
 		switch {
 		case IsNoneType(t):
 			panic("")
@@ -1317,21 +1312,22 @@ func getDefaultExprByType(t Type) Expr {
 			}
 		case IsBoolType(t):
 			return &Boolean{
+				Type:  t,
 				Value: false,
 			}
 		default:
 			panic("")
 		}
 	case *TypeFunc:
-		return &Null{Type: typ}
+		return &Null{Type: t}
 	case *TypeArray:
-		return &EmptyArray{Type: typ}
+		return &EmptyArray{Type: t}
 	case *TypeTuple:
-		return &EmptyTuple{Type: typ}
+		return &EmptyTuple{Type: t}
 	case *TypeStruct:
-		return &EmptyStruct{Type: typ}
+		return &EmptyStruct{Type: t}
 	case *TypePtr:
-		return &Null{Type: typ}
+		return &Null{Type: t}
 	default:
 		panic("")
 	}

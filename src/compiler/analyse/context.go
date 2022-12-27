@@ -36,19 +36,21 @@ func newProgramContext() *ProgramContext {
 
 // 包环境
 type packageContext struct {
-	f       *ProgramContext
-	path    stlos.Path
-	globals map[string]types.Pair[bool, Ident]
-	externs map[string]*packageContext
+	f        *ProgramContext
+	path     stlos.Path
+	globals  map[string]types.Pair[bool, Ident]
+	typedefs map[string]types.Pair[bool, *Typedef]
+	externs  map[string]*packageContext
 }
 
 // 新建包环境
 func newPackageContext(f *ProgramContext, path stlos.Path) *packageContext {
 	return &packageContext{
-		f:       f,
-		path:    path,
-		globals: make(map[string]types.Pair[bool, Ident]),
-		externs: make(map[string]*packageContext),
+		f:        f,
+		path:     path,
+		globals:  make(map[string]types.Pair[bool, Ident]),
+		typedefs: make(map[string]types.Pair[bool, *Typedef]),
+		externs:  make(map[string]*packageContext),
 	}
 }
 
@@ -66,8 +68,6 @@ func (self packageContext) GetValue(name string) types.Pair[bool, Ident] {
 
 func (self *packageContext) AddValue(pub bool, name string, value Ident) bool {
 	if _, ok := self.globals[name]; ok {
-		return false
-	} else if _, ok := self.externs[name]; ok {
 		return false
 	}
 	self.globals[name] = types.NewPair(pub, value)
