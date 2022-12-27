@@ -117,11 +117,36 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 		return v
 	case *analyse.Function:
 		return self.vars[expr]
-	case *analyse.Call:
+	case *analyse.Method:
+		return self.vars[expr.Func]
+	case *analyse.FuncCall:
 		f := self.codegenExpr(expr.Func, true)
 		args := make([]llvm.Value, len(expr.Args))
 		for i, a := range expr.Args {
 			args[i] = self.codegenExpr(a, true)
+		}
+		if expr.Exit {
+			self.doneBeforeFuncEnd()
+		}
+		call := self.builder.CreateCall(f.Type().ReturnType(), f, args, "")
+		if expr.NoReturn {
+			self.builder.CreateUnreachable()
+		}
+		return call
+	case *analyse.MethodCall:
+		f := self.codegenExpr(expr.Method.Func, true)
+		args := make([]llvm.Value, len(expr.Args)+1)
+		if analyse.IsPtrType(expr.Method.Self.GetType()) {
+			args[0] = self.codegenExpr(expr.Method.Self, true)
+		} else if expr.Method.Self.GetMut() {
+			args[0] = self.codegenExpr(expr.Method.Self, false)
+		} else {
+			selfArg := self.codegenExpr(expr.Method.Self, true)
+			args[0] = self.builder.CreateAlloca(selfArg.Type(), "")
+			self.builder.CreateStore(selfArg, args[0])
+		}
+		for i, a := range expr.Args {
+			args[i+1] = self.codegenExpr(a, true)
 		}
 		if expr.Exit {
 			self.doneBeforeFuncEnd()

@@ -27,18 +27,38 @@ type Attr struct {
 }
 
 type GlobalWithAttrSuffix struct {
-	Function *Function       `@@`
+	Function *FunctionHead   `@@`
 	Variable *GlobalVariable `| @@`
+}
+
+// FunctionHead 函数头
+type FunctionHead struct {
+	utils.Position
+	Public *string       `@"pub"?`
+	Tail   *FunctionTail `"func" @@`
+}
+
+// FunctionTail 函数尾
+type FunctionTail struct {
+	Function *Function `@@`
+	Method   *Method   `| @@`
 }
 
 // Function 函数
 type Function struct {
-	utils.Position
-	Public *string `@"pub"?`
-	Name   Name    `"func" @@`
+	Name   Name    `@@`
 	Params []Param `"(" (@@ ("," @@)*)? ")"`
 	Ret    *Type   `@@?`
 	Body   *Block  `@@?`
+}
+
+// Method 方法
+type Method struct {
+	Self   Name    `"(" @@ ")"`
+	Name   Name    `@@`
+	Params []Param `"(" (@@ ("," @@)*)? ")"`
+	Ret    *Type   `@@?`
+	Body   Block   `@@`
 }
 
 // Param 参数

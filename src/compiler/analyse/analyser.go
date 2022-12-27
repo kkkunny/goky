@@ -159,11 +159,20 @@ func analysePackageVariableDecl(ctx *packageContext, asts []parse.Global) utils.
 		}
 		switch {
 		case ag.GlobalWithAttr.Global.Function != nil:
-			f, err := analyseFunctionDecl(ctx, ag.GlobalWithAttr.Attr, *ag.GlobalWithAttr.Global.Function)
-			if err != nil {
-				errors = append(errors, err)
+			if ag.GlobalWithAttr.Global.Function.Tail.Function != nil {
+				f, err := analyseFunctionDecl(ctx, ag.GlobalWithAttr.Attr, *ag.GlobalWithAttr.Global.Function)
+				if err != nil {
+					errors = append(errors, err)
+				} else {
+					ctx.f.Globals = append(ctx.f.Globals, f)
+				}
 			} else {
-				ctx.f.Globals = append(ctx.f.Globals, f)
+				f, err := analyseMethodDecl(ctx, ag.GlobalWithAttr.Attr, *ag.GlobalWithAttr.Global.Function)
+				if err != nil {
+					errors = append(errors, err)
+				} else {
+					ctx.f.Globals = append(ctx.f.Globals, f)
+				}
 			}
 		case ag.GlobalWithAttr.Global.Variable != nil:
 			v, err := analyseGlobalVariable(ctx, ag.GlobalWithAttr.Attr, *ag.GlobalWithAttr.Global.Variable)
@@ -194,9 +203,15 @@ func analysePackageVariableDef(ctx *packageContext, asts []parse.Global) utils.E
 		}
 		switch {
 		case ag.GlobalWithAttr.Global.Function != nil:
-			if ag.GlobalWithAttr.Global.Function.Body != nil {
-				_, err := analyseFunctionDef(ctx, *ag.GlobalWithAttr.Global.Function)
-				if err != nil {
+			if ag.GlobalWithAttr.Global.Function.Tail.Function != nil {
+				if ag.GlobalWithAttr.Global.Function.Tail.Function.Body == nil {
+					continue
+				}
+				if err := analyseFunctionDef(ctx, *ag.GlobalWithAttr.Global.Function.Tail.Function); err != nil {
+					errors = append(errors, err)
+				}
+			} else {
+				if err := analyseMethodDef(ctx, *ag.GlobalWithAttr.Global.Function.Tail.Method); err != nil {
 					errors = append(errors, err)
 				}
 			}

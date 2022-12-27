@@ -118,8 +118,8 @@ func (self Binary) IsTemporary() bool {
 	return true
 }
 
-// Call 函数调用
-type Call struct {
+// FuncCall 函数调用
+type FuncCall struct {
 	NoReturn bool
 	Exit     bool
 
@@ -127,17 +127,40 @@ type Call struct {
 	Args []Expr
 }
 
-func (self Call) stmt() {}
+func (self FuncCall) stmt() {}
 
-func (self Call) GetType() Type {
-	return self.Func.GetType().(*TypeFunc).Ret
+func (self FuncCall) GetType() Type {
+	return GetBaseType(self.Func.GetType()).(*TypeFunc).Ret
 }
 
-func (self Call) GetMut() bool {
+func (self FuncCall) GetMut() bool {
 	return false
 }
 
-func (self Call) IsTemporary() bool {
+func (self FuncCall) IsTemporary() bool {
+	return true
+}
+
+// MethodCall 方法调用
+type MethodCall struct {
+	NoReturn bool
+	Exit     bool
+
+	Method *Method
+	Args   []Expr
+}
+
+func (self MethodCall) stmt() {}
+
+func (self MethodCall) GetType() Type {
+	return self.Method.GetType().(*TypeFunc).Ret
+}
+
+func (self MethodCall) GetMut() bool {
+	return false
+}
+
+func (self MethodCall) IsTemporary() bool {
 	return true
 }
 
@@ -416,6 +439,26 @@ func (self Covert) GetMut() bool {
 }
 
 func (self Covert) IsTemporary() bool {
+	return true
+}
+
+// Method 方法
+type Method struct {
+	Self Expr // 类型定义 || 类型定义指针
+	Func *Function
+}
+
+func (self Method) stmt() {}
+
+func (self Method) GetType() Type {
+	return self.Func.GetType()
+}
+
+func (self Method) GetMut() bool {
+	return false
+}
+
+func (self Method) IsTemporary() bool {
 	return true
 }
 
@@ -867,42 +910,88 @@ func analyseSinglePrimaryPostfix(ctx *blockContext, expect Type, prefixAst parse
 		ft, ok := GetBaseType(f.GetType()).(*TypeFunc)
 		if !ok {
 			return nil, utils.Errorf(prefixAst.Position, "expect a function")
-		} else if len(ft.Params) != len(suffixAst.Call.Exprs) {
-			return nil, utils.Errorf(prefixAst.Position, "expect %d arguments", len(ft.Params))
 		}
-		args, err := analyseExprList(ctx, ft.Params, *suffixAst.Call)
-		if err != nil {
-			return nil, err
-		}
-		var errors []utils.Error
-		for i, a := range args {
-			a, err = expectExpr(suffixAst.Call.Exprs[i].Position, ft.Params[i], a)
+
+		if method, ok := f.(*Method); ok {
+			if len(ft.Params)-1 != len(suffixAst.Call.Exprs) {
+				return nil, utils.Errorf(prefixAst.Position, "expect %d arguments", len(ft.Params)-1)
+			}
+			args, err := analyseExprList(ctx, ft.Params[1:], *suffixAst.Call)
 			if err != nil {
-				errors = append(errors, err)
+				return nil, err
 			}
-		}
-		if len(errors) == 1 {
-			return nil, errors[0]
-		} else if len(errors) > 1 {
-			return nil, utils.NewMultiError(errors...)
-		}
-		var noReturn bool
-		var exit bool
-		if g, ok := f.(*Function); ok {
-			if g.Exit {
-				exit = true
+			var errors []utils.Error
+			for i, pt := range ft.Params[1:] {
+				var err utils.Error
+				args[i], err = expectExpr(suffixAst.Call.Exprs[i].Position, pt, args[i])
+				if err != nil {
+					errors = append(errors, err)
+				}
 			}
-			if g.NoReturn {
-				noReturn = true
-				ctx.SetEnd()
+			if len(errors) == 1 {
+				return nil, errors[0]
+			} else if len(errors) > 1 {
+				return nil, utils.NewMultiError(errors...)
 			}
+
+			var noReturn bool
+			var exit bool
+			if g, ok := f.(*Function); ok {
+				if g.Exit {
+					exit = true
+				}
+				if g.NoReturn {
+					noReturn = true
+					ctx.SetEnd()
+				}
+			}
+
+			return &MethodCall{
+				NoReturn: noReturn,
+				Exit:     exit,
+				Method:   method,
+				Args:     args,
+			}, nil
+		} else {
+			if len(ft.Params) != len(suffixAst.Call.Exprs) {
+				return nil, utils.Errorf(prefixAst.Position, "expect %d arguments", len(ft.Params))
+			}
+			args, err := analyseExprList(ctx, ft.Params, *suffixAst.Call)
+			if err != nil {
+				return nil, err
+			}
+			var errors []utils.Error
+			for i, a := range args {
+				a, err = expectExpr(suffixAst.Call.Exprs[i].Position, ft.Params[i], a)
+				if err != nil {
+					errors = append(errors, err)
+				}
+			}
+			if len(errors) == 1 {
+				return nil, errors[0]
+			} else if len(errors) > 1 {
+				return nil, utils.NewMultiError(errors...)
+			}
+
+			var noReturn bool
+			var exit bool
+			if g, ok := f.(*Function); ok {
+				if g.Exit {
+					exit = true
+				}
+				if g.NoReturn {
+					noReturn = true
+					ctx.SetEnd()
+				}
+			}
+
+			return &FuncCall{
+				NoReturn: noReturn,
+				Exit:     exit,
+				Func:     f,
+				Args:     args,
+			}, nil
 		}
-		return &Call{
-			NoReturn: noReturn,
-			Exit:     exit,
-			Func:     f,
-			Args:     args,
-		}, nil
 	case suffixAst.Index != nil:
 		// TODO expect
 		prefix, err := analysePrimaryPostfix(ctx, nil, prefixAst)
@@ -960,7 +1049,29 @@ func analyseSinglePrimaryPostfix(ctx *blockContext, expect Type, prefixAst parse
 		if err != nil {
 			return nil, err
 		}
-		switch t := GetBaseType(prefix.GetType()).(type) {
+
+		// 方法
+		prefixType := prefix.GetType()
+		if IsTypedef(prefixType) || (IsPtrType(prefixType) && IsTypedef(prefixType.(*TypePtr).Elem)) {
+			var _selfType *Typedef
+			if td, ok := prefixType.(*Typedef); ok {
+				_selfType = td
+			} else {
+				_selfType = prefixType.(*TypePtr).Elem.(*Typedef)
+			}
+
+			funcName := _selfType.String() + "." + suffixAst.Dot.Value
+			if funcObj := ctx.GetValue(funcName); funcObj != nil {
+				fun := funcObj.(*Function)
+				return &Method{
+					Self: prefix,
+					Func: fun,
+				}, nil
+			}
+		}
+
+		// 属性
+		switch t := GetBaseType(prefixType).(type) {
 		case *TypeStruct:
 			if !t.Fields.ContainKey(suffixAst.Dot.Value) {
 				return nil, utils.Errorf(suffixAst.Dot.Position, "unknown identifier")

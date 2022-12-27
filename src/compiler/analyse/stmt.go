@@ -71,7 +71,7 @@ func (self LoopControl) stmt() {}
 
 // Defer 延迟调用
 type Defer struct {
-	Call *Call
+	Call *FuncCall
 }
 
 func (self Defer) stmt() {}
@@ -301,7 +301,7 @@ func analyseDefer(ctx *blockContext, ast parse.Stmt) (*Defer, utils.Error) {
 	if err != nil {
 		return nil, err
 	}
-	call, ok := obj.(*Call)
+	call, ok := obj.(*FuncCall)
 	if !ok {
 		return nil, utils.Errorf(ast.Position, "expect a function call")
 	}

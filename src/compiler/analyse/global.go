@@ -74,15 +74,15 @@ func (self GlobalVariable) IsTemporary() bool {
 // *********************************************************************************************************************
 
 // 函数声明
-func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.Function) (*Function, utils.Error) {
-	retType, err := analyseType(ctx, ast.Ret)
+func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.FunctionHead) (*Function, utils.Error) {
+	retType, err := analyseType(ctx, ast.Tail.Function.Ret)
 	if err != nil {
 		return nil, err
 	}
 
-	params := make([]*Param, len(ast.Params))
+	params := make([]*Param, len(ast.Tail.Function.Params))
 	var errors []utils.Error
-	for i, p := range ast.Params {
+	for i, p := range ast.Tail.Function.Params {
 		pt, err := analyseType(ctx, &p.Type)
 		if err != nil {
 			errors = append(errors, err)
@@ -127,8 +127,8 @@ func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.F
 			panic("")
 		}
 	}
-	if f.ExternName == "" && ast.Body == nil {
-		errors = append(errors, utils.Errorf(ast.Name.Position, "missing function body"))
+	if f.ExternName == "" && ast.Tail.Function.Body == nil {
+		errors = append(errors, utils.Errorf(ast.Tail.Function.Name.Position, "missing function body"))
 	}
 	if len(errors) == 1 {
 		return nil, errors[0]
@@ -136,46 +136,38 @@ func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.F
 		return nil, utils.NewMultiError(errors...)
 	}
 
-	if !ctx.AddValue(ast.Public != nil, ast.Name.Value, f) {
-		return nil, utils.Errorf(ast.Name.Position, "duplicate identifier")
+	if !ctx.AddValue(ast.Public != nil, ast.Tail.Function.Name.Value, f) {
+		return nil, utils.Errorf(ast.Tail.Function.Name.Position, "duplicate identifier")
 	}
 	return f, nil
 }
 
 // 函数定义
-func analyseFunctionDef(ctx *packageContext, ast parse.Function) (*Function, utils.Error) {
-	obj := ctx.GetValue(ast.Name.Value).Second
-	if obj == nil {
-		return nil, utils.Errorf(ast.Name.Position, "unknown identifier")
-	}
-	f, ok := obj.(*Function)
-	if !ok {
-		return nil, nil
-	}
-
+func analyseFunctionDef(ctx *packageContext, ast parse.Function) utils.Error {
+	f := ctx.GetValue(ast.Name.Value).Second.(*Function)
 	fctx := newFunctionContext(ctx, f.Ret)
 	for i, p := range f.Params {
 		name := ast.Params[i].Name
 		if name != nil {
 			if !fctx.AddValue(name.Value, p) {
-				return nil, utils.Errorf(ast.Name.Position, "duplicate identifier")
+				return utils.Errorf(name.Position, "duplicate identifier")
 			}
 		}
 	}
 
 	bctx, body, err := analyseBlock(fctx, *ast.Body, false)
 	if err != nil {
-		return nil, err
+		return err
 	} else if !bctx.IsEnd() {
 		if f.Ret.Equal(None) {
 			body.Stmts = append(body.Stmts, &Return{})
 			bctx.SetEnd()
 		} else {
-			return nil, utils.Errorf(ast.Name.Position, "function missing return")
+			return utils.Errorf(ast.Name.Position, "function missing return")
 		}
 	}
 	f.Body = body
-	return f, nil
+	return nil
 }
 
 // 全局变量
@@ -238,10 +230,8 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 			ctx.f.Links[linkPath] = struct{}{}
 		case astAttr.LinkLib != nil:
 			ctx.f.Libs[string(*astAttr.LinkLib)] = struct{}{}
-		case astAttr.NoReturn != nil:
-			fallthrough
-		case astAttr.Exit != nil:
-			errors = append(errors, utils.Errorf(astAttr.Position, "attribute `@noreturn` cannot be used for global variables"))
+		case astAttr.NoReturn != nil || astAttr.Exit != nil:
+			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
 		default:
 			panic("")
 		}
@@ -266,5 +256,112 @@ func analyseTypedef(ctx *packageContext, ast parse.Typedef) utils.Error {
 	}
 	td := ctx.typedefs[ast.Name.Value].Second
 	td.Dst = dst
+	return nil
+}
+
+// 方法声明
+func analyseMethodDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.FunctionHead) (*Function, utils.Error) {
+	_selfType, err := analyseType(ctx, &parse.Type{Ident: &parse.TypeIdent{
+		Position: ast.Tail.Method.Self.Position,
+		Name:     ast.Tail.Method.Self,
+	}})
+	if err != nil {
+		return nil, err
+	}
+	selfType := NewPtrType(_selfType)
+
+	retType, err := analyseType(ctx, ast.Tail.Method.Ret)
+	if err != nil {
+		return nil, err
+	}
+
+	params := make([]*Param, len(ast.Tail.Method.Params)+1)
+	params[0] = &Param{Type: selfType}
+	var errors []utils.Error
+	for i, p := range ast.Tail.Method.Params {
+		pt, err := analyseType(ctx, &p.Type)
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+		params[i+1] = &Param{Type: pt}
+	}
+	if len(errors) == 1 {
+		return nil, errors[0]
+	} else if len(errors) > 1 {
+		return nil, utils.NewMultiError(errors...)
+	}
+
+	f := &Function{
+		Ret:    retType,
+		Params: params,
+	}
+
+	// 属性
+	errors = make([]utils.Error, 0)
+	for _, astAttr := range astAttrs {
+		switch {
+		case astAttr.Extern != nil || astAttr.LinkAsm != nil || astAttr.LinkLib != nil:
+			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
+		case astAttr.NoReturn != nil:
+			f.NoReturn = true
+		case astAttr.Exit != nil:
+			f.Exit = true
+			f.NoReturn = true
+		default:
+			panic("")
+		}
+	}
+	if len(errors) == 1 {
+		return nil, errors[0]
+	} else if len(errors) > 1 {
+		return nil, utils.NewMultiError(errors...)
+	}
+
+	name := _selfType.String() + "." + ast.Tail.Method.Name.Value
+	if !ctx.AddValue(ast.Public != nil, name, f) {
+		return nil, utils.Errorf(ast.Tail.Method.Name.Position, "duplicate identifier")
+	}
+	return f, nil
+}
+
+// 方法定义
+func analyseMethodDef(ctx *packageContext, ast parse.Method) utils.Error {
+	_selfType, err := analyseType(ctx, &parse.Type{Ident: &parse.TypeIdent{
+		Position: ast.Self.Position,
+		Name:     ast.Self,
+	}})
+	if err != nil {
+		return err
+	}
+
+	name := _selfType.String() + "." + ast.Name.Value
+	f := ctx.GetValue(name).Second.(*Function)
+	fctx := newFunctionContext(ctx, f.Ret)
+	for i, p := range f.Params {
+		if i == 0 {
+			fctx.AddValue("self", p)
+		} else {
+			pn := ast.Params[i].Name
+			if pn != nil {
+				if !fctx.AddValue(pn.Value, p) {
+					return utils.Errorf(pn.Position, "duplicate identifier")
+				}
+			}
+		}
+	}
+
+	bctx, body, err := analyseBlock(fctx, ast.Body, false)
+	if err != nil {
+		return err
+	} else if !bctx.IsEnd() {
+		if f.Ret.Equal(None) {
+			body.Stmts = append(body.Stmts, &Return{})
+			bctx.SetEnd()
+		} else {
+			return utils.Errorf(ast.Name.Position, "function missing return")
+		}
+	}
+	f.Body = body
 	return nil
 }
