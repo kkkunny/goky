@@ -956,21 +956,37 @@ func analyseSinglePrimaryPostfix(ctx *blockContext, expect Type, prefixAst parse
 			return nil, utils.Errorf(prefixAst.Position, "expect a array or tuple")
 		}
 	case suffixAst.Dot != nil:
-		// 结构体指针
 		prefix, err := analysePrimaryPostfix(ctx, nil, prefixAst)
 		if err != nil {
 			return nil, err
 		}
-		st, ok := GetBaseType(prefix.GetType()).(*TypeStruct)
-		if !ok {
-			return nil, utils.Errorf(prefixAst.Position, "expect a struct")
-		} else if !st.Fields.ContainKey(suffixAst.Dot.Value) {
-			return nil, utils.Errorf(suffixAst.Dot.Position, "unknown identifier")
+		switch t := GetBaseType(prefix.GetType()).(type) {
+		case *TypeStruct:
+			if !t.Fields.ContainKey(suffixAst.Dot.Value) {
+				return nil, utils.Errorf(suffixAst.Dot.Position, "unknown identifier")
+			}
+			return &GetField{
+				From:  prefix,
+				Index: suffixAst.Dot.Value,
+			}, nil
+		case *TypePtr:
+			st, ok := GetBaseType(t.Elem).(*TypeStruct)
+			if !ok {
+				break
+			}
+			if !st.Fields.ContainKey(suffixAst.Dot.Value) {
+				return nil, utils.Errorf(suffixAst.Dot.Position, "unknown identifier")
+			}
+			return &GetField{
+				From: &Unary{
+					Type:  t.Elem,
+					Opera: "*",
+					Value: prefix,
+				},
+				Index: suffixAst.Dot.Value,
+			}, nil
 		}
-		return &GetField{
-			From:  prefix,
-			Index: suffixAst.Dot.Value,
-		}, nil
+		return nil, utils.Errorf(prefixAst.Position, "expect a struct")
 	default:
 		panic("")
 	}

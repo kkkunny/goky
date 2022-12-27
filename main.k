@@ -1,7 +1,10 @@
-import std.c
+type A struct{
+    v: u8
+}
 
 @extern(main)
 func main()u8{
-    let i: c:size_t = 10
-    return i as u8
+    let a: A = {1}
+    let b = &a
+    return b.v
 }
