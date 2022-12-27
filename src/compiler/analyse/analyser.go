@@ -120,7 +120,7 @@ func analysePackageTypeDef(ctx *packageContext, asts []parse.Global) utils.Error
 			continue
 		}
 
-		ctx.typedefs[ast.Name.Value] = types.NewPair(false, NewTypedef(ctx.path, ast.Name.Value, nil))
+		ctx.typedefs[ast.Name.Value] = types.NewPair(ast.Public != nil, NewTypedef(ctx.path, ast.Name.Value, nil))
 		typedefs.Add(ast)
 	}
 	if len(errors) == 1 {

@@ -419,39 +419,7 @@ func analyseType(ctx *packageContext, ast *parse.Type) (Type, utils.Error) {
 	}
 	switch {
 	case ast.Ident != nil:
-		switch ast.Ident.Name.Value {
-		case "i8":
-			return I8, nil
-		case "i16":
-			return I16, nil
-		case "i32":
-			return I32, nil
-		case "i64":
-			return I64, nil
-		case "isize":
-			return Isize, nil
-		case "u8":
-			return U8, nil
-		case "u16":
-			return U16, nil
-		case "u32":
-			return U32, nil
-		case "u64":
-			return U64, nil
-		case "usize":
-			return Usize, nil
-		case "f32":
-			return F32, nil
-		case "f64":
-			return F64, nil
-		case "bool":
-			return Bool, nil
-		default:
-			if td, ok := ctx.typedefs[ast.Ident.Name.Value]; ok {
-				return td.Second, nil
-			}
-			return nil, utils.Errorf(ast.Ident.Position, "unknown identifier")
-		}
+		return analyseTypeIdent(ctx, *ast.Ident, false)
 	case ast.Func != nil:
 		ret, err := analyseType(ctx, ast.Func.Ret)
 		if err != nil {
@@ -582,5 +550,54 @@ func checkTypeCircle(tmp *set.LinkedHashSet[*Typedef], t Type) bool {
 		return checkTypeCircle(tmp, typ.Dst)
 	default:
 		panic("")
+	}
+}
+
+// 标识符类型
+func analyseTypeIdent(ctx *packageContext, ast parse.TypeIdent, isImport bool) (Type, utils.Error) {
+	if ast.Package == nil {
+		switch ast.Name.Value {
+		case "i8":
+			return I8, nil
+		case "i16":
+			return I16, nil
+		case "i32":
+			return I32, nil
+		case "i64":
+			return I64, nil
+		case "isize":
+			return Isize, nil
+		case "u8":
+			return U8, nil
+		case "u16":
+			return U16, nil
+		case "u32":
+			return U32, nil
+		case "u64":
+			return U64, nil
+		case "usize":
+			return Usize, nil
+		case "f32":
+			return F32, nil
+		case "f64":
+			return F64, nil
+		case "bool":
+			return Bool, nil
+		default:
+			if td, ok := ctx.typedefs[ast.Name.Value]; ok && (!isImport || td.First) {
+				return td.Second, nil
+			}
+			return nil, utils.Errorf(ast.Position, "unknown identifier")
+		}
+	} else {
+		pkg := ctx.externs[ast.Package.Value]
+		if pkg == nil {
+			return nil, utils.Errorf(ast.Package.Position, "unknown `%s`", ast.Package.Value)
+		}
+		astCpy := parse.TypeIdent{
+			Position: ast.Position,
+			Name:     ast.Name,
+		}
+		return analyseTypeIdent(pkg, astCpy, true)
 	}
 }

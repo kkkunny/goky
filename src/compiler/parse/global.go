@@ -71,6 +71,7 @@ type Import struct {
 // Typedef 类型定义
 type Typedef struct {
 	utils.Position
-	Name Name `"type" @@`
-	Dst  Type `@@`
+	Public *string `@"pub"?`
+	Name   Name    `"type" @@`
+	Dst    Type    `@@`
 }

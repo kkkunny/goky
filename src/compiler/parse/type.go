@@ -18,7 +18,8 @@ type Type struct {
 // TypeIdent 标识符类型
 type TypeIdent struct {
 	utils.Position
-	Name Name `@@`
+	Package *Name `(@@ ":")?`
+	Name    Name  `@@`
 }
 
 // TypeFunc 函数类型
