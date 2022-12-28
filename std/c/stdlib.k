@@ -1,0 +1,100 @@
+pub type div_t struct{
+    quot: int
+    rem: int
+}
+pub type ldiv_t struct{
+    quot: long
+    rem: long
+}
+pub type wchar_t int
+
+pub let EXIT_SUCCESS: int = 0
+pub let EXIT_FAILURE: int = 1
+
+@extern(atof)
+pub func atof(str: *char)double
+
+@extern(atoi)
+pub func atoi(str: *char)int
+
+@extern(atol)
+pub func atol(str: *char)long
+
+@extern(strtod)
+pub func strtod(str: *char, endptr: **char)double
+
+@extern(strtol)
+pub func strtol(str: *char, endptr: **char, base: int)long
+
+@extern(strtoul)
+pub func strtoul(str: *char, endptr: **char, base: int)unsigned_long
+
+@extern(calloc)
+pub func calloc(nitems: size_t, size: size_t)voidptr
+
+@extern(free)
+pub func free(ptr: voidptr)
+
+@extern(malloc)
+pub func malloc(size: size_t)voidptr
+
+@extern(realloc)
+pub func realloc(ptr: voidptr, size: size_t)voidptr
+
+@extern(abort)
+@exit
+@noreturn
+pub func abort()
+
+@extern(atexit)
+pub func atexit(func: func())int
+
+@extern(exit)
+@exit
+@noreturn
+pub func exit(status: int)
+
+@extern(getenv)
+pub func getenv(name: *char)*char
+
+@extern(system)
+pub func system(string: char)int
+
+@extern(bsearch)
+pub func bsearch(key: voidptr, base: voidptr, nitems: size_t, size: size_t, compar: func(voidptr, voidptr)int)voidptr
+
+@extern(qsort)
+pub func qsort(base: voidptr, nitems: size_t, size: size_t, compar: func(voidptr, voidptr)int)
+
+@extern(abs)
+pub func abs(x: int)int
+
+@extern(div)
+pub func div(numer: int, denom: int)div_t
+
+@extern(labs)
+pub func labs(x: long)long
+
+@extern(ldiv)
+pub func ldiv(numer: long, denom: long)ldiv_t
+
+@extern(rand)
+pub func rand()int
+
+@extern(srand)
+pub func srand(seed: unsigned_int)
+
+@extern(mblen)
+pub func mblen(str: *char, n: size_t)int
+
+@extern(mbstowcs)
+pub func mbstowcs(pwcs: *wchar_t, str: *char, n: size_t)size_t
+
+@extern(mbtowc)
+pub func mbtowc(pwc: *wchar_t, str: *char, n: size_t)int
+
+@extern(wcstombs)
+pub func wcstombs(str: *char, pwcs: *wchar_t, n: size_t)size_t
+
+@extern(wctomb)
+pub func wctomb(str: *char, wchar: wchar_t)int

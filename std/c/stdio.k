@@ -1,9 +1,136 @@
-pub type size_t usize
+pub type size_t unsigned_long
 pub type FILE struct{}
+pub type fpos_t struct{}
 
-@extern(exit)
-@exit
-pub func exit(i32)
+@extern(stdin)
+pub let stdin: *FILE
+@extern(stdout)
+pub let stdout: *FILE
+@extern(stderr)
+pub let stderr: *FILE
+
+@extern(fclose)
+pub func fclose(stream: *FILE)int
+
+@extern(clearerr)
+pub func clearerr(stream: *FILE)
+
+@extern(feof)
+pub func feof(stream: *FILE)int
+
+@extern(ferror)
+pub func ferror(stream: *FILE)int
+
+@extern(fflush)
+pub func fflush(stream: *FILE)int
+
+@extern(fgetpos)
+pub func fgetpos(stream: *FILE, pos: *fpos_t)int
+
+@extern(fopen)
+pub func fopen(filename: *char, mode: *char)*FILE
+
+@extern(fread)
+pub func fread(ptr: voidptr, size: size_t, nmemb: size_t, stream: *FILE)size_t
+
+@extern(freopen)
+pub func freopen(filename: *char, mode: *char, stream: *FILE)*FILE
+
+@extern(fseek)
+pub func fseek(stream: *FILE, offset: long, whence: int)int
+
+@extern(fsetpos)
+pub func fsetpos(stream: *FILE, pos: *fpos_t)int
+
+@extern(ftell)
+pub func ftell(stream: *FILE)long
+
+@extern(fwrite)
+pub func fwrite(ptr: voidptr, size: size_t, nmemb: size_t, stream: *FILE)size_t
+
+@extern(remove)
+pub func remove(filename: *char)int
+
+@extern(rename)
+pub func rename(old_filename: *char, new_filename: *char)int
+
+@extern(rewind)
+pub func rewind(stream: *FILE)
+
+@extern(setbuf)
+pub func setbuf(stream: *FILE, buffer: *char)
+
+@extern(setvbuf)
+pub func setvbuf(stream: *FILE, buffer: *char, mode: int, size: size_t)int
+
+@extern(tmpfile)
+pub func tmpfile()*FILE
+
+@extern(tmpnam)
+pub func tmpnam(str: *char)*char
+
+//@extern(fprintf)
+//pub func fprintf(stream: *FILE, format: *char, ...)int
+
+//@extern(printf)
+//pub func printf(format: *char, ...)int
+
+//@extern(sprintf)
+//pub func sprintf(str: *char, format: *char, ...)int
+
+//@extern(vfprintf)
+//pub func vfprintf(stream: *FILE, format: *char, ...)int
+
+//@extern(vprintf)
+//pub func vprintf(format: char, ...)int
+
+//@extern(vsprintf)
+//pub func vsprintf(str: *char, format: *char, ...)int
+
+//@extern(fscanf)
+//pub func fscanf(stream: *FILE, format: *char, ...)int
+
+//@extern(scanf)
+//pub func scanf(format: *char, ...)int
+
+//@extern(sscanf)
+//pub func sscanf(str: *char, format: *char, ...)int
+
+@extern(fgetc)
+pub func fgetc(stream: *FILE)int
+
+@extern(fgets)
+pub func fgets(str: *char, n: int, stream: *FILE)*char
+
+@extern(fputc)
+pub func fputc(char: int, stream: *FILE)int
+
+@extern(fputs)
+pub func fputs(str: *char, stream: *FILE)int
+
+@extern(getc)
+pub func getc(stream: *FILE)int
+
+@extern(getchar)
+pub func getchar()int
+
+@extern(gets)
+pub func gets(str: *char)*char
+
+@extern(putc)
+pub func putc(char: int, stream: *FILE)int
+
+@extern(putchar)
+pub func putchar(char: int)int
 
 @extern(puts)
-pub func puts(*i8)
+pub func puts(str: *char)int
+
+@extern(ungetc)
+pub func ungetc(char: int, stream: *FILE)int
+
+@extern(perror)
+pub func perror(str: *char)
+
+//@extern(snprintf)
+//pub func snprintf(str: *char, size: size_t, format: *char, ...)int

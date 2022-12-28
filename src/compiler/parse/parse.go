@@ -12,7 +12,7 @@ import (
 var (
 	lmg = lexer.MustSimple([]lexer.SimpleRule{
 		{"Whitespace", `[ \t]`},
-		{"Comment", `//.*\n`},
+		{"Comment", `//.*`},
 		{"Float", `[0-9].[0-9]+`},
 		{"Int", `[0-9]+`},
 		{"Char", `'\\''|'\\0'|'\\a'|'\\b'|'\\t'|'\\n'|'\\v'|'\\f'|'\\r'|'\\\\'|'.'`},
@@ -33,7 +33,7 @@ var (
 // Package 包
 type Package struct {
 	PkgPath stlos.Path
-	Globals []Global `Separator* (@@ (Separator+ @@)*)? Separator*`
+	Globals []Global `Separator* (@@ (Separator+ @@?)*)?`
 }
 
 // ParseFile 词法分析+语法分析 文件

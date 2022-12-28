@@ -1,15 +1,13 @@
-type ArrayList<T> struct{
-    cap: usize
-    len: usize
-    ptr: *T
-}
-
-func add<T>(x: T, y: T)T{
-    return x + y
-}
+import std.c
 
 @extern(main)
 func main()u8{
-    let a: ArrayList::<i32> = {}
-    return add::<u8>(1, 2)
+    let s = c""
+    c:setlocale(c:LC_ALL, &s as *c:char)
+    c:putwchar('你' as c:wchar_t)
+    c:putwchar('好' as c:wchar_t)
+    c:putwchar('世' as c:wchar_t)
+    c:putwchar('界' as c:wchar_t)
+    c:putwchar('\n' as c:wchar_t)
+    return 0
 }

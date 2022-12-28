@@ -6,20 +6,20 @@ import (
 
 // Block 代码块
 type Block struct {
-	Stmts []Stmt `"{" Separator* (@@ (Separator* @@)*)? Separator* "}"`
+	Stmts []Stmt `"{" Separator* (@@ (Separator+ @@?)*)? "}"`
 }
 
 // Stmt 语句
 type Stmt struct {
 	utils.Position
-	Return      *Return         `@@ Separator`
-	Variable    *Variable       `| @@ Separator`
-	Block       *Block          `| @@ Separator`
-	IfElse      *IfElse         `| @@ Separator`
-	For         *For            `| @@ Separator`
-	LoopControl *string         `| @("break" | "continue") Separator`
-	Defer       *PrimaryPostfix `| "defer" @@ Separator`
-	Expr        *Expr           `| @@ Separator`
+	Return      *Return         `@@`
+	Variable    *Variable       `| @@`
+	Block       *Block          `| @@`
+	IfElse      *IfElse         `| @@`
+	For         *For            `| @@`
+	LoopControl *string         `| @("break" | "continue")`
+	Defer       *PrimaryPostfix `| "defer" @@`
+	Expr        *Expr           `| @@`
 }
 
 // Return 函数返回
