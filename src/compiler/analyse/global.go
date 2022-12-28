@@ -4,6 +4,7 @@ import (
 	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
+	"github.com/kkkunny/stl/types"
 )
 
 // Global 全局
@@ -76,24 +77,6 @@ type functionTemplate struct {
 	ast      *parse.FunctionHead
 	astAttrs []parse.Attr
 	impls    map[string]*Function
-}
-
-func (self functionTemplate) global() {}
-
-func (self functionTemplate) stmt() {}
-
-func (self functionTemplate) ident() {}
-
-func (self functionTemplate) GetType() Type {
-	return None
-}
-
-func (self functionTemplate) GetMut() bool {
-	return false
-}
-
-func (self functionTemplate) IsTemporary() bool {
-	return true
 }
 
 // *********************************************************************************************************************
@@ -270,17 +253,6 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 	}
 }
 
-// 类型定义
-func analyseTypedef(ctx *packageContext, ast parse.Typedef) utils.Error {
-	dst, err := analyseType(ctx, &ast.Dst)
-	if err != nil {
-		return err
-	}
-	td := ctx.typedefs[ast.Name.Value].Second
-	td.Dst = dst
-	return nil
-}
-
 // 方法声明
 func analyseMethodDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.FunctionHead) (*Function, utils.Error) {
 	_selfType, err := analyseType(ctx, &parse.Type{Ident: &parse.TypeIdent{
@@ -407,14 +379,13 @@ func analyseFunctionTemplateDecl(ctx *packageContext, astAttrs []parse.Attr, ast
 		return utils.NewMultiError(errors...)
 	}
 
-	ft := &functionTemplate{
+	if _, ok := ctx.funcTemplates[ast.Tail.Function.Name.Value]; ok {
+		return utils.Errorf(ast.Tail.Function.Name.Position, "duplicate identifier")
+	}
+	ctx.funcTemplates[ast.Tail.Function.Name.Value] = types.NewPair(ast.Public != nil, &functionTemplate{
 		ast:      ast,
 		astAttrs: astAttrs,
 		impls:    make(map[string]*Function),
-	}
-	if !ctx.AddValue(ast.Public != nil, ast.Tail.Function.Name.Value, ft) {
-		return utils.Errorf(ast.Tail.Function.Name.Position, "duplicate identifier")
-	}
-
+	})
 	return nil
 }

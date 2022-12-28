@@ -1516,48 +1516,42 @@ func analyseConstantExprList(expects []Type, ast parse.ExprList) ([]Expr, utils.
 
 // 标识符
 func analyseIdent(ctx *blockContext, ast parse.Ident) (Expr, utils.Error) {
-	if ast.Package == nil {
-		v := ctx.GetValue(ast.Name.Value)
-		if v == nil {
-			return nil, utils.Errorf(ast.Position, "unknown identifier")
+	if len(ast.Templates) == 0 {
+		if ast.Package == nil {
+			v := ctx.GetValue(ast.Name.Value)
+			if v == nil {
+				return nil, utils.Errorf(ast.Position, "unknown identifier")
+			}
+			return v, nil
+		} else {
+			pkg := ctx.GetPackageContext().externs[ast.Package.Value]
+			if pkg == nil {
+				return nil, utils.Errorf(ast.Package.Position, "unknown `%s`", ast.Package.Value)
+			}
+			value := pkg.GetValue(ast.Name.Value)
+			if !value.First || value.Second == nil {
+				return nil, utils.Errorf(ast.Name.Position, "unknown `%s`", ast.Name.Value)
+			}
+			return value.Second, nil
 		}
-
-		// 函数模板
-		ft, ok := v.(*functionTemplate)
-		var ftpn int
-		if ok {
-			ftpn = len(ft.ast.Tail.Function.Templates)
-		}
-		if len(ast.Templates) != ftpn {
-			return nil, utils.Errorf(ast.Position, "expect `%d` template params", ftpn)
-		} else if ok {
-			return analyseIdentWithTemplateParams(ctx.GetPackageContext(), ft, ast)
-		}
-
-		return v, nil
 	} else {
-		pkg := ctx.GetPackageContext().externs[ast.Package.Value]
-		if pkg == nil {
-			return nil, utils.Errorf(ast.Package.Position, "unknown `%s`", ast.Package.Value)
+		if ast.Package == nil {
+			v, ok := ctx.GetPackageContext().funcTemplates[ast.Name.Value]
+			if !ok {
+				return nil, utils.Errorf(ast.Position, "unknown identifier")
+			}
+			return analyseIdentWithTemplateParams(ctx.GetPackageContext(), v.Second, ast)
+		} else {
+			pkg := ctx.GetPackageContext().externs[ast.Package.Value]
+			if pkg == nil {
+				return nil, utils.Errorf(ast.Package.Position, "unknown `%s`", ast.Package.Value)
+			}
+			value, ok := pkg.funcTemplates[ast.Name.Value]
+			if !ok || !value.First {
+				return nil, utils.Errorf(ast.Name.Position, "unknown `%s`", ast.Name.Value)
+			}
+			return analyseIdentWithTemplateParams(pkg, value.Second, ast)
 		}
-		value := pkg.GetValue(ast.Name.Value)
-		if !value.First || value.Second == nil {
-			return nil, utils.Errorf(ast.Name.Position, "unknown `%s`", ast.Name.Value)
-		}
-
-		// 函数模板
-		ft, ok := value.Second.(*functionTemplate)
-		var ftpn int
-		if ok {
-			ftpn = len(ft.ast.Tail.Function.Templates)
-		}
-		if len(ast.Templates) != ftpn {
-			return nil, utils.Errorf(ast.Position, "expect `%d` template params", ftpn)
-		} else if ok {
-			return analyseIdentWithTemplateParams(pkg, ft, ast)
-		}
-
-		return value.Second, nil
 	}
 }
 

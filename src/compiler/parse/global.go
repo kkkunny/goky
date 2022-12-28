@@ -47,7 +47,7 @@ type FunctionTail struct {
 // Function 函数
 type Function struct {
 	Name      Name    `@@`
-	Templates []Name  `("[" (@@ ("," @@)*)? "]")?`
+	Templates []Name  `("<" (@@ ("," @@)*)? ">")?`
 	Params    []Param `"(" (@@ ("," @@)*)? ")"`
 	Ret       *Type   `@@?`
 	Body      *Block  `@@?`
@@ -92,7 +92,8 @@ type Import struct {
 // Typedef 类型定义
 type Typedef struct {
 	utils.Position
-	Public *string `@"pub"?`
-	Name   Name    `"type" @@`
-	Dst    Type    `@@`
+	Public    *string `@"pub"?`
+	Name      Name    `"type" @@`
+	Templates []Name  `("<" (@@ ("," @@)*)? ">")?`
+	Dst       Type    `@@`
 }

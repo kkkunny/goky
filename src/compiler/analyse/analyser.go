@@ -22,11 +22,9 @@ func AnalyseMain(ast parse.Package) (*ProgramContext, error) {
 	}
 	// 模板
 	for _, pkg := range ctx.importedPackageSet {
-		for _, pair := range pkg.globals {
-			if ft, ok := pair.Second.(*functionTemplate); ok {
-				for _, f := range ft.impls {
-					ctx.Globals = append(ctx.Globals, f)
-				}
+		for _, ft := range pkg.funcTemplates {
+			for _, f := range ft.Second.impls {
+				ctx.Globals = append(ctx.Globals, f)
 			}
 		}
 	}
@@ -131,8 +129,16 @@ func analysePackageTypeDef(ctx *packageContext, asts []parse.Global) utils.Error
 			continue
 		}
 
-		ctx.typedefs[ast.Name.Value] = types.NewPair(ast.Public != nil, NewTypedef(ctx.path, ast.Name.Value, nil))
-		typedefs.Add(ast)
+		if len(ast.Templates) == 0 {
+			ctx.typedefs[ast.Name.Value] = types.NewPair(ast.Public != nil, NewTypedef(ctx.path, ast.Name.Value, nil))
+			typedefs.Add(ast)
+		} else {
+			ctx.typedefTemplates[ast.Name.Value] = types.NewPair(ast.Public != nil, &typedefTemplate{
+				pkg:   ctx.path,
+				ast:   ast,
+				impls: make(map[string]*Typedef),
+			})
+		}
 	}
 	if len(errors) == 1 {
 		return errors[0]
@@ -141,8 +147,14 @@ func analysePackageTypeDef(ctx *packageContext, asts []parse.Global) utils.Error
 	}
 	// 解析目标类型
 	for iter := typedefs.Iterator(); iter.HasValue(); iter.Next() {
-		if err := analyseTypedef(ctx, *iter.Value()); err != nil {
+		if len(iter.Value().Templates) != 0 {
+			continue
+		}
+		dst, err := analyseType(ctx, &iter.Value().Dst)
+		if err != nil {
 			errors = append(errors, err)
+		} else {
+			ctx.typedefs[iter.Value().Name.Value].Second.Dst = dst
 		}
 	}
 	// 循环引用检测
