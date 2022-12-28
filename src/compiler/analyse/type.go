@@ -584,6 +584,9 @@ func analyseTypeIdent(ctx *packageContext, ast parse.TypeIdent, isImport bool) (
 		case "bool":
 			return Bool, nil
 		default:
+			if tp, ok := ctx.templateParams.Peek()[ast.Name.Value]; ok {
+				return tp, nil
+			}
 			if td, ok := ctx.typedefs[ast.Name.Value]; ok && (!isImport || td.First) {
 				return td.Second, nil
 			}

@@ -2,6 +2,7 @@ package analyse
 
 import (
 	stlos "github.com/kkkunny/stl/os"
+	"github.com/kkkunny/stl/queue"
 	"github.com/kkkunny/stl/types"
 )
 
@@ -36,21 +37,26 @@ func newProgramContext() *ProgramContext {
 
 // 包环境
 type packageContext struct {
-	f        *ProgramContext
-	path     stlos.Path
+	f    *ProgramContext
+	path stlos.Path
+
 	globals  map[string]types.Pair[bool, Ident]
 	typedefs map[string]types.Pair[bool, *Typedef]
-	externs  map[string]*packageContext
+
+	templateParams *queue.Queue[map[string]Type]
+
+	externs map[string]*packageContext
 }
 
 // 新建包环境
 func newPackageContext(f *ProgramContext, path stlos.Path) *packageContext {
 	return &packageContext{
-		f:        f,
-		path:     path,
-		globals:  make(map[string]types.Pair[bool, Ident]),
-		typedefs: make(map[string]types.Pair[bool, *Typedef]),
-		externs:  make(map[string]*packageContext),
+		f:              f,
+		path:           path,
+		globals:        make(map[string]types.Pair[bool, Ident]),
+		typedefs:       make(map[string]types.Pair[bool, *Typedef]),
+		templateParams: queue.NewQueue[map[string]Type](),
+		externs:        make(map[string]*packageContext),
 	}
 }
 

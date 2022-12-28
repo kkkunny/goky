@@ -149,8 +149,9 @@ type Constant struct {
 // Ident 标识符
 type Ident struct {
 	utils.Position
-	Package *Name `(@@ ":")?`
-	Name    Name  `@@`
+	Package   *Name  `(@@ ":")?`
+	Name      Name   `@@`
+	Templates []Type `("::" "<" (@@ ("," @@)*)? ">")?`
 }
 
 // ExprList 表达式列表

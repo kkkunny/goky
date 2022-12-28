@@ -71,6 +71,31 @@ func (self GlobalVariable) IsTemporary() bool {
 	return false
 }
 
+// 函数模板
+type functionTemplate struct {
+	ast      *parse.FunctionHead
+	astAttrs []parse.Attr
+	impls    map[string]*Function
+}
+
+func (self functionTemplate) global() {}
+
+func (self functionTemplate) stmt() {}
+
+func (self functionTemplate) ident() {}
+
+func (self functionTemplate) GetType() Type {
+	return None
+}
+
+func (self functionTemplate) GetMut() bool {
+	return false
+}
+
+func (self functionTemplate) IsTemporary() bool {
+	return true
+}
+
 // *********************************************************************************************************************
 
 // 函数声明
@@ -124,7 +149,7 @@ func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.F
 			f.Exit = true
 			f.NoReturn = true
 		default:
-			panic("")
+			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
 		}
 	}
 	if f.ExternName == "" && ast.Tail.Function.Body == nil {
@@ -143,8 +168,7 @@ func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.F
 }
 
 // 函数定义
-func analyseFunctionDef(ctx *packageContext, ast parse.Function) utils.Error {
-	f := ctx.GetValue(ast.Name.Value).Second.(*Function)
+func analyseFunctionDef(ctx *packageContext, f *Function, ast parse.Function) utils.Error {
 	fctx := newFunctionContext(ctx, f.Ret)
 	for i, p := range f.Params {
 		name := ast.Params[i].Name
@@ -230,10 +254,8 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 			ctx.f.Links[linkPath] = struct{}{}
 		case astAttr.LinkLib != nil:
 			ctx.f.Libs[string(*astAttr.LinkLib)] = struct{}{}
-		case astAttr.NoReturn != nil || astAttr.Exit != nil:
-			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
 		default:
-			panic("")
+			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
 		}
 	}
 	if v.ExternName == "" && ast.Variable.Value == nil {
@@ -301,15 +323,13 @@ func analyseMethodDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.Fun
 	errors = make([]utils.Error, 0)
 	for _, astAttr := range astAttrs {
 		switch {
-		case astAttr.Extern != nil || astAttr.LinkAsm != nil || astAttr.LinkLib != nil:
-			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
 		case astAttr.NoReturn != nil:
 			f.NoReturn = true
 		case astAttr.Exit != nil:
 			f.Exit = true
 			f.NoReturn = true
 		default:
-			panic("")
+			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
 		}
 	}
 	if len(errors) == 1 {
@@ -363,5 +383,38 @@ func analyseMethodDef(ctx *packageContext, ast parse.Method) utils.Error {
 		}
 	}
 	f.Body = body
+	return nil
+}
+
+// 函数模板声明
+func analyseFunctionTemplateDecl(ctx *packageContext, astAttrs []parse.Attr, ast *parse.FunctionHead) utils.Error {
+	// 属性
+	var errors []utils.Error
+	for _, astAttr := range astAttrs {
+		switch {
+		case astAttr.NoReturn != nil:
+		case astAttr.Exit != nil:
+		default:
+			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
+		}
+	}
+	if ast.Tail.Function.Body == nil {
+		errors = append(errors, utils.Errorf(ast.Tail.Function.Name.Position, "missing function body"))
+	}
+	if len(errors) == 1 {
+		return errors[0]
+	} else if len(errors) > 1 {
+		return utils.NewMultiError(errors...)
+	}
+
+	ft := &functionTemplate{
+		ast:      ast,
+		astAttrs: astAttrs,
+		impls:    make(map[string]*Function),
+	}
+	if !ctx.AddValue(ast.Public != nil, ast.Tail.Function.Name.Value, ft) {
+		return utils.Errorf(ast.Tail.Function.Name.Position, "duplicate identifier")
+	}
+
 	return nil
 }

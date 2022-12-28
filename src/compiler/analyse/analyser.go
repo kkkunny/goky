@@ -14,10 +14,21 @@ import (
 // AnalyseMain 作为主包进行语义分析
 func AnalyseMain(ast parse.Package) (*ProgramContext, error) {
 	ctx := newProgramContext()
+	// 包
 	pkgCtx := newPackageContext(ctx, ast.PkgPath)
 	ctx.importedPackageSet[ast.PkgPath] = pkgCtx
 	if err := analyseNoMain(pkgCtx, ast); err != nil {
 		return nil, err
+	}
+	// 模板
+	for _, pkg := range ctx.importedPackageSet {
+		for _, pair := range pkg.globals {
+			if ft, ok := pair.Second.(*functionTemplate); ok {
+				for _, f := range ft.impls {
+					ctx.Globals = append(ctx.Globals, f)
+				}
+			}
+		}
 	}
 	return ctx, nil
 }
@@ -159,15 +170,22 @@ func analysePackageVariableDecl(ctx *packageContext, asts []parse.Global) utils.
 		}
 		switch {
 		case ag.GlobalWithAttr.Global.Function != nil:
-			if ag.GlobalWithAttr.Global.Function.Tail.Function != nil {
-				f, err := analyseFunctionDecl(ctx, ag.GlobalWithAttr.Attr, *ag.GlobalWithAttr.Global.Function)
-				if err != nil {
-					errors = append(errors, err)
+			fast := ag.GlobalWithAttr.Global.Function
+			if fast.Tail.Function != nil {
+				if len(fast.Tail.Function.Templates) == 0 {
+					f, err := analyseFunctionDecl(ctx, ag.GlobalWithAttr.Attr, *fast)
+					if err != nil {
+						errors = append(errors, err)
+					} else {
+						ctx.f.Globals = append(ctx.f.Globals, f)
+					}
 				} else {
-					ctx.f.Globals = append(ctx.f.Globals, f)
+					if err := analyseFunctionTemplateDecl(ctx, ag.GlobalWithAttr.Attr, fast); err != nil {
+						errors = append(errors, err)
+					}
 				}
 			} else {
-				f, err := analyseMethodDecl(ctx, ag.GlobalWithAttr.Attr, *ag.GlobalWithAttr.Global.Function)
+				f, err := analyseMethodDecl(ctx, ag.GlobalWithAttr.Attr, *fast)
 				if err != nil {
 					errors = append(errors, err)
 				} else {
@@ -203,15 +221,16 @@ func analysePackageVariableDef(ctx *packageContext, asts []parse.Global) utils.E
 		}
 		switch {
 		case ag.GlobalWithAttr.Global.Function != nil:
-			if ag.GlobalWithAttr.Global.Function.Tail.Function != nil {
-				if ag.GlobalWithAttr.Global.Function.Tail.Function.Body == nil {
+			fast := ag.GlobalWithAttr.Global.Function
+			if fast.Tail.Function != nil {
+				if fast.Tail.Function.Body == nil || len(fast.Tail.Function.Templates) != 0 {
 					continue
 				}
-				if err := analyseFunctionDef(ctx, *ag.GlobalWithAttr.Global.Function.Tail.Function); err != nil {
+				if err := analyseFunctionDef(ctx, ctx.GetValue(fast.Tail.Function.Name.Value).Second.(*Function), *fast.Tail.Function); err != nil {
 					errors = append(errors, err)
 				}
 			} else {
-				if err := analyseMethodDef(ctx, *ag.GlobalWithAttr.Global.Function.Tail.Method); err != nil {
+				if err := analyseMethodDef(ctx, *fast.Tail.Method); err != nil {
 					errors = append(errors, err)
 				}
 			}

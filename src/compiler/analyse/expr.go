@@ -1,8 +1,10 @@
 package analyse
 
 import (
+	"fmt"
 	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
+	"strings"
 )
 
 // Expr 表达式
@@ -1519,6 +1521,19 @@ func analyseIdent(ctx *blockContext, ast parse.Ident) (Expr, utils.Error) {
 		if v == nil {
 			return nil, utils.Errorf(ast.Position, "unknown identifier")
 		}
+
+		// 函数模板
+		ft, ok := v.(*functionTemplate)
+		var ftpn int
+		if ok {
+			ftpn = len(ft.ast.Tail.Function.Templates)
+		}
+		if len(ast.Templates) != ftpn {
+			return nil, utils.Errorf(ast.Position, "expect `%d` template params", ftpn)
+		} else if ok {
+			return analyseIdentWithTemplateParams(ctx.GetPackageContext(), ft, ast)
+		}
+
 		return v, nil
 	} else {
 		pkg := ctx.GetPackageContext().externs[ast.Package.Value]
@@ -1529,6 +1544,70 @@ func analyseIdent(ctx *blockContext, ast parse.Ident) (Expr, utils.Error) {
 		if !value.First || value.Second == nil {
 			return nil, utils.Errorf(ast.Name.Position, "unknown `%s`", ast.Name.Value)
 		}
+
+		// 函数模板
+		ft, ok := value.Second.(*functionTemplate)
+		var ftpn int
+		if ok {
+			ftpn = len(ft.ast.Tail.Function.Templates)
+		}
+		if len(ast.Templates) != ftpn {
+			return nil, utils.Errorf(ast.Position, "expect `%d` template params", ftpn)
+		} else if ok {
+			return analyseIdentWithTemplateParams(pkg, ft, ast)
+		}
+
 		return value.Second, nil
 	}
+}
+
+// 标识符（带模板参数）
+func analyseIdentWithTemplateParams(ctx *packageContext, ft *functionTemplate, ast parse.Ident) (Expr, utils.Error) {
+	ftpn := len(ft.ast.Tail.Function.Templates)
+	if len(ast.Templates) != ftpn {
+		return nil, utils.Errorf(ast.Position, "expect `%d` template params", ftpn)
+	}
+	// 模板参数
+	tps := make([]Type, ftpn)
+	tpStrs := make([]string, ftpn)
+	tpMap := make(map[string]Type)
+	var errors []utils.Error
+	for i, tpAst := range ast.Templates {
+		tp, err := analyseType(ctx, &tpAst)
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+		tpNameAst := ft.ast.Tail.Function.Templates[i]
+		if _, ok := tpMap[tpNameAst.Value]; ok {
+			errors = append(errors, utils.Errorf(tpNameAst.Position, "duplicate identifier"))
+			continue
+		}
+		tps[i] = tp
+		tpStrs[i] = tp.String()
+		tpMap[tpNameAst.Value] = tp
+	}
+	if len(errors) == 1 {
+		return nil, errors[0]
+	} else if len(errors) > 1 {
+		return nil, utils.NewMultiError(errors...)
+	}
+	// 实现
+	name := fmt.Sprintf("%s<%s>", ast.Name.Value, strings.Join(tpStrs, ","))
+	if f, ok := ft.impls[name]; ok {
+		return f, nil
+	}
+	ft.ast.Tail.Function.Name.Value = name
+	ctx.templateParams.Push(tpMap)
+	f, err := analyseFunctionDecl(ctx, ft.astAttrs, *ft.ast)
+	if err != nil {
+		return nil, err
+	}
+	ft.impls[name] = f
+	ft.ast.Tail.Function.Name.Value = ast.Name.Value
+	if err = analyseFunctionDef(ctx, f, *ft.ast.Tail.Function); err != nil {
+		return nil, err
+	}
+	ctx.templateParams.Pop()
+	return f, nil
 }

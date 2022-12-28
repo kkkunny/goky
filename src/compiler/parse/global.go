@@ -46,10 +46,11 @@ type FunctionTail struct {
 
 // Function 函数
 type Function struct {
-	Name   Name    `@@`
-	Params []Param `"(" (@@ ("," @@)*)? ")"`
-	Ret    *Type   `@@?`
-	Body   *Block  `@@?`
+	Name      Name    `@@`
+	Templates []Name  `("[" (@@ ("," @@)*)? "]")?`
+	Params    []Param `"(" (@@ ("," @@)*)? ")"`
+	Ret       *Type   `@@?`
+	Body      *Block  `@@?`
 }
 
 // Method 方法
