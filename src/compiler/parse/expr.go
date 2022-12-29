@@ -151,7 +151,7 @@ type Ident struct {
 	utils.Position
 	Package   *Name  `(@@ ":")?`
 	Name      Name   `@@`
-	Templates []Type `("::" "<" (@@ ("," @@)*)? ">")?`
+	Templates []Type `("::" "<" (@@ ("," @@)*)? ">")?` // TODO A::<B::<C>> “>>”解析错误
 }
 
 // ExprList 表达式列表
