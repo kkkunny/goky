@@ -1,7 +1,7 @@
 package codegen
 
 import (
-	"tinygo.org/x/go-llvm"
+	"github.com/kkkunny/go-llvm"
 )
 
 // Optimize 优化

@@ -6,6 +6,8 @@ github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46t
 github.com/hexops/gotextdiff v1.0.3 h1:gitA9+qJrrTCsiCl7+kh75nPqQt1cx4ZkudSTLoUqJM=
 github.com/inconshreveable/mousetrap v1.0.1 h1:U3uMjPSQEBMNp1lFxmllqCPM6P5u/Xq7Pgzkat/bFNc=
 github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
+github.com/kkkunny/go-llvm v0.0.0-20221229055450-29837b9418ac h1:nqNi86daIfzFp/s+melUVgwap6OmbuvkKPsVDsEoAh4=
+github.com/kkkunny/go-llvm v0.0.0-20221229055450-29837b9418ac/go.mod h1:jB5pXrp+OuU925YsDy0bRhSNIhC/+hjkD9Silgu8iTc=
 github.com/kkkunny/stl v0.0.0-20221015140421-2a6594a9d191 h1:uJMc7G0lxLav8LJHd/F4rpXNWSs9pSORCQDaCSq9sYQ=
 github.com/kkkunny/stl v0.0.0-20221015140421-2a6594a9d191/go.mod h1:WeWSheCo/CshxBASAhjwvxl7i+cx0ZBGG5JrWE24XHI=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
@@ -17,4 +19,3 @@ golang.org/x/exp v0.0.0-20220414153411-bcd21879b8fd h1:zVFyTKZN/Q7mNRWSs1GOYnHM9
 golang.org/x/exp v0.0.0-20220414153411-bcd21879b8fd/go.mod h1:lgLbSvA5ygNOMpwM/9anMpWVlVJ7Z+cHWq/eFuinpGE=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-tinygo.org/x/go-llvm v0.0.0-20220922113433-4b5ad7ff76ec/go.mod h1:GFbusT2VTA4I+l4j80b17KFK+6whv69Wtny5U+T8RR0=

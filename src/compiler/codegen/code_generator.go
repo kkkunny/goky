@@ -1,8 +1,8 @@
 package codegen
 
 import (
+	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/analyse"
-	"tinygo.org/x/go-llvm"
 )
 
 // CodeGenerator 代码生成器

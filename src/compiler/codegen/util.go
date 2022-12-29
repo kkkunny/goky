@@ -1,8 +1,8 @@
 package codegen
 
 import (
+	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/utils"
-	"tinygo.org/x/go-llvm"
 )
 
 var (

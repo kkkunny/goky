@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/analyse"
 	"github.com/kkkunny/klang/src/compiler/codegen"
 	"github.com/kkkunny/klang/src/compiler/parse"
@@ -13,7 +14,6 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-	"tinygo.org/x/go-llvm"
 )
 
 // LookupCmd 查找命令

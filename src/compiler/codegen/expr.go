@@ -1,9 +1,9 @@
 package codegen
 
 import (
+	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/analyse"
 	stlutil "github.com/kkkunny/stl/util"
-	"tinygo.org/x/go-llvm"
 	"unsafe"
 )
 
