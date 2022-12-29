@@ -20,14 +20,6 @@ func AlignTo[T constraints.Integer | constraints.Float](n, align T) T {
 
 // GetRootPath 获取语言根目录
 func GetRootPath() (stlos.Path, error) {
-	envName := "KROOT"
-	path := stlos.Path(os.Getenv(envName))
-	if path == "" {
-		path, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-		return stlos.Path(path), nil
-	}
-	return path.GetAbsolute()
+	path, err := os.Getwd()
+	return stlos.Path(path), err
 }
