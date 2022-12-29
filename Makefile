@@ -1,3 +1,9 @@
+.PHONY: lex
+lex: lex.go main.k
+	@go build -tags test,lex -o .test .
+	-@./.test || true
+	@rm .test
+
 .PHONY: parse
 parse: parse.go main.k
 	@go build -tags test,parse -o .test .

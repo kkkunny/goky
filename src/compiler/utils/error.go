@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/alecthomas/participle/v2/lexer"
 	"strings"
 )
 
@@ -31,7 +30,7 @@ func (self SingleError) Error() string {
 }
 
 func (self SingleError) String() string {
-	return fmt.Sprintf("%s:%d:%d: %s", self.Pos.Pos.Filename, self.Pos.Pos.Line, self.Pos.Pos.Column, self.Msg)
+	return fmt.Sprintf("%s:%d:%d: %s", self.Pos.File, self.Pos.BeginRow, self.Pos.BeginCol, self.Msg)
 }
 
 // MultiError 多个异常
@@ -57,26 +56,4 @@ func (self MultiError) String() string {
 		}
 	}
 	return buf.String()
-}
-
-// Position 位置
-type Position struct {
-	Pos    lexer.Position
-	EndPos lexer.Position
-}
-
-// NewPosition 新建Position
-func NewPosition(pos lexer.Position) Position {
-	return Position{
-		Pos:    pos,
-		EndPos: pos,
-	}
-}
-
-// MixPosition 混合Position
-func MixPosition(b, e Position) Position {
-	return Position{
-		Pos:    b.Pos,
-		EndPos: e.EndPos,
-	}
 }

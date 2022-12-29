@@ -168,7 +168,7 @@ func outputExecutableFile(from, to stlos.Path, libraries, libraryPaths []string)
 	if linker == nil {
 		return "", errors.New("can not found a linker")
 	}
-	linker.Args = append(linker.Args, "-static", "-fPIC", "-o", to.String(), from.String())
+	linker.Args = append(linker.Args, "-fPIC", "-o", to.String(), from.String())
 	for _, l := range libraries {
 		linker.Args = append(linker.Args, fmt.Sprintf("-l%s", l))
 	}
