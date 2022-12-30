@@ -64,6 +64,7 @@ const (
 
 	SEM // 分隔符
 	COL // :
+	CLL // ::
 	NOT // !
 	NEG // ~
 	COM // ,
@@ -145,6 +146,7 @@ var tokenKindStr = [...]string{
 
 	SEM: ";",
 	COL: ":",
+	CLL: "::",
 	NOT: "!",
 	NEG: "~",
 	COM: ",",
@@ -218,16 +220,6 @@ func (self TokenKind) String() string {
 // Priority 获取运算符优先级
 func (self TokenKind) Priority() uint8 {
 	switch self {
-	case DOT:
-		return 11
-	case LPA:
-		return 10
-	case LBA:
-		return 9
-	case AS:
-		return 8
-	case QUO:
-		return 7
 	case MUL, DIV, MOD:
 		return 6
 	case ADD, SUB:

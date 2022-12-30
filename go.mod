@@ -3,7 +3,6 @@ module github.com/kkkunny/klang
 go 1.19
 
 require (
-	github.com/alecthomas/participle/v2 v2.0.0-beta.5
 	github.com/kkkunny/go-llvm v0.0.0-20221229055450-29837b9418ac
 	github.com/kkkunny/stl v0.0.0-20221015140421-2a6594a9d191
 	github.com/spf13/cobra v1.6.1

@@ -47,7 +47,7 @@ pub func realloc(ptr: voidptr, size: size_t)voidptr
 pub func abort()
 
 @extern(atexit)
-pub func atexit(func: func())int
+pub func atexit(fun: func())int
 
 @extern(exit)
 @exit

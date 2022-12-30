@@ -2,7 +2,6 @@ package analyse
 
 import (
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
 	"strings"
 )

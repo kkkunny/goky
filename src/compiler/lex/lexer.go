@@ -25,9 +25,15 @@ func NewLexer(fp stlos.Path, reader Reader) *Lexer {
 	lexer := &Lexer{
 		file:   fp,
 		reader: reader,
+		row:    1,
 	}
 	lexer.next()
 	return lexer
+}
+
+// GetFilepath 获取源文件路径
+func (self *Lexer) GetFilepath() stlos.Path {
+	return self.file
 }
 
 // 下一个
@@ -54,7 +60,9 @@ func (self *Lexer) next() rune {
 // 获取下一个
 func (self *Lexer) peek() rune {
 	ch, _, err := self.reader.ReadRune()
-	if err != nil && !errors.Is(err, io.EOF) {
+	if err != nil && errors.Is(err, io.EOF) {
+		return 0
+	} else if err != nil && !errors.Is(err, io.EOF) {
 		panic(err)
 	}
 	stlutil.MustValue(self.reader.Seek(-1, io.SeekCurrent))
@@ -385,6 +393,10 @@ func (self *Lexer) Scan() Token {
 		case ':':
 			kind = COL
 			buf.WriteRune(self.ch)
+			if self.peek() == ':' {
+				buf.WriteRune(self.next())
+				kind = CLL
+			}
 		case '!':
 			kind = NOT
 			buf.WriteRune(self.ch)

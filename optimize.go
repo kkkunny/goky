@@ -7,7 +7,6 @@ import (
 	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/analyse"
 	"github.com/kkkunny/klang/src/compiler/codegen"
-	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/stl/util"
 )
 
