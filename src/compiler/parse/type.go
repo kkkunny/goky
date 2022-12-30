@@ -77,11 +77,11 @@ func (self TypeFunc) Type() {}
 // TypeArray 数组类型
 type TypeArray struct {
 	Pos  utils.Position
-	Size lex.Token
+	Size *Int
 	Elem Type
 }
 
-func NewTypeArray(pos utils.Position, size lex.Token, elem Type) *TypeArray {
+func NewTypeArray(pos utils.Position, size *Int, elem Type) *TypeArray {
 	return &TypeArray{
 		Pos:  pos,
 		Size: size,
@@ -213,7 +213,7 @@ func (self *Parser) parseTypeFunc() Type {
 // 数组类型
 func (self *Parser) parseTypeArray() Type {
 	begin := self.expectNextIs(lex.LBA).Pos
-	size := self.expectNextIs(lex.INT)
+	size := self.parseIntExpr()
 	self.expectNextIs(lex.RBA)
 	elem := self.parseType()
 	return NewTypeArray(utils.MixPosition(begin, elem.Position()), size, elem)

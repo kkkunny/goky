@@ -70,7 +70,7 @@ func outputAsm(config *buildConfig, from, to stlos.Path) (stlos.Path, error) {
 	if err != nil {
 		return "", err
 	}
-	mean, err := analyse.AnalyseMain(*ast)
+	mean, err := analyse.AnalyseMain(ast)
 	if err != nil {
 		return "", err
 	}

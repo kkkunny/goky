@@ -33,11 +33,11 @@ func (self AttrExtern) Attr() {}
 // AttrLink @link
 type AttrLink struct {
 	Pos  utils.Position
-	Asms []lex.Token
-	Libs []lex.Token
+	Asms []*String
+	Libs []*String
 }
 
-func NewAttrLink(pos utils.Position, asms []lex.Token, libs []lex.Token) *AttrLink {
+func NewAttrLink(pos utils.Position, asms, libs []*String) *AttrLink {
 	return &AttrLink{
 		Pos:  pos,
 		Asms: asms,
@@ -93,17 +93,16 @@ func (self *Parser) parseAttr() Attr {
 		return NewAttrExtern(utils.MixPosition(attrName.Pos, end), name)
 	case "@link":
 		self.expectNextIs(lex.LPA)
-		var asms []lex.Token
-		var libs []lex.Token
+		var asms, libs []*String
 		for {
 			linkname := self.expectNextIs(lex.IDENT)
 			switch linkname.Source {
 			case "asm":
 				self.expectNextIs(lex.ASS)
-				asms = append(asms, self.expectNextIs(lex.STRING))
+				asms = append(asms, self.parseStringExpr())
 			case "lib":
 				self.expectNextIs(lex.ASS)
-				libs = append(libs, self.expectNextIs(lex.STRING))
+				libs = append(libs, self.parseStringExpr())
 			default:
 				self.throwErrorf(linkname.Pos, "unknown link")
 			}

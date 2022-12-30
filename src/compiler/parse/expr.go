@@ -417,12 +417,7 @@ func (self *Parser) parseExprListAtLeastOne(sep lex.TokenKind) (toks []Expr) {
 func (self *Parser) parsePrimaryExpr() Expr {
 	switch self.nextTok.Kind {
 	case lex.INT:
-		self.next()
-		v, err := strconv.ParseInt(self.curTok.Source, 10, 64)
-		if err != nil {
-			self.throwErrorf(self.curTok.Pos, "out of integer size")
-		}
-		return NewInt(self.curTok, v)
+		return self.parseIntExpr()
 	case lex.FLOAT:
 		self.next()
 		v, err := strconv.ParseFloat(self.curTok.Source, 64)
@@ -440,25 +435,22 @@ func (self *Parser) parsePrimaryExpr() Expr {
 		self.next()
 		return NewChar(self.curTok, []rune(self.curTok.Source)[1])
 	case lex.STRING:
-		self.next()
-		runes := []rune(self.curTok.Source[1 : len(self.curTok.Source)-1])
-		return NewString(self.curTok, runes)
+		return self.parseStringExpr()
 	case lex.CSTRING:
 		self.next()
-		bytes := []byte(self.curTok.Source[1 : len(self.curTok.Source)-1])
-		return NewCString(self.curTok, bytes)
+		bytes := []byte(self.curTok.Source[2 : len(self.curTok.Source)-1])
+		return NewCString(self.curTok, append(bytes, 0))
 	case lex.NULL:
 		self.next()
 		return NewNull(self.curTok)
 	case lex.IDENT:
 		self.next()
-		name := self.curTok
-		var pkg *lex.Token
+		pkg := self.curTok
 		if self.skipNextIs(lex.CLL) {
-			pkg = &name
-			name = self.expectNextIs(lex.IDENT)
+			name := self.expectNextIs(lex.IDENT)
+			return NewIdent(&pkg, name)
 		}
-		return NewIdent(pkg, name)
+		return NewIdent(nil, pkg)
 	case lex.LPA:
 		self.next()
 		begin := self.curTok.Pos
@@ -490,6 +482,23 @@ func (self *Parser) parsePrimaryExpr() Expr {
 		self.throwErrorf(self.nextTok.Pos, "unknown expression")
 		return nil
 	}
+}
+
+// 整数
+func (self *Parser) parseIntExpr() *Int {
+	tok := self.expectNextIs(lex.INT)
+	v, err := strconv.ParseInt(tok.Source, 10, 64)
+	if err != nil {
+		self.throwErrorf(tok.Pos, "out of integer size")
+	}
+	return NewInt(tok, v)
+}
+
+// 字符串
+func (self *Parser) parseStringExpr() *String {
+	tok := self.expectNextIs(lex.STRING)
+	runes := []rune(tok.Source[1 : len(tok.Source)-1])
+	return NewString(tok, runes)
 }
 
 // 一元表达式前缀

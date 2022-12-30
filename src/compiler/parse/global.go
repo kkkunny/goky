@@ -16,12 +16,14 @@ type Global interface {
 type Import struct {
 	Pos      utils.Position
 	Packages []lex.Token
+	Alias    *lex.Token
 }
 
-func NewImport(pos utils.Position, pkgs []lex.Token) *Import {
+func NewImport(pos utils.Position, pkgs []lex.Token, alias *lex.Token) *Import {
 	return &Import{
 		Pos:      pos,
 		Packages: pkgs,
+		Alias:    alias,
 	}
 }
 
@@ -82,6 +84,37 @@ func (self Function) Position() utils.Position {
 }
 
 func (self Function) Global() {}
+
+// Method 方法
+type Method struct {
+	Pos    utils.Position
+	Attrs  []Attr
+	Public bool
+	Self   lex.Token
+	Ret    Type
+	Name   lex.Token
+	Params []*NameOrNilAndType
+	Body   *Block
+}
+
+func NewMethod(pos utils.Position, attrs []Attr, pub bool, self lex.Token, ret Type, name lex.Token, params []*NameOrNilAndType, body *Block) *Method {
+	return &Method{
+		Pos:    pos,
+		Attrs:  attrs,
+		Public: pub,
+		Self:   self,
+		Ret:    ret,
+		Name:   name,
+		Params: params,
+		Body:   body,
+	}
+}
+
+func (self Method) Position() utils.Position {
+	return self.Pos
+}
+
+func (self Method) Global() {}
 
 // GlobalValue 全局变量
 type GlobalValue struct {
@@ -178,7 +211,12 @@ func (self *Parser) parseGlobalWithAttr(pub *lex.Token) Global {
 func (self *Parser) parseImport() *Import {
 	begin := self.expectNextIs(lex.IMPORT).Pos
 	pkgs := self.parseTokenListAtLeastOne(lex.DOT)
-	return NewImport(utils.MixPosition(begin, pkgs[len(pkgs)-1].Pos), pkgs)
+	var alias *lex.Token
+	if self.skipNextIs(lex.AS) {
+		name := self.expectNextIs(lex.IDENT)
+		alias = &name
+	}
+	return NewImport(utils.MixPosition(begin, pkgs[len(pkgs)-1].Pos), pkgs, alias)
 }
 
 // 类型定义
@@ -214,6 +252,10 @@ func (self *Parser) parseFunction(pub *lex.Token, attrs []Attr) Global {
 		begin = self.curTok.Pos
 	}
 
+	if self.nextIs(lex.LPA) {
+		return self.parseMethod(begin, pub != nil, attrs)
+	}
+
 	name := self.expectNextIs(lex.IDENT)
 	self.expectNextIs(lex.LPA)
 	mid := lex.COL
@@ -225,6 +267,34 @@ func (self *Parser) parseFunction(pub *lex.Token, attrs []Attr) Global {
 		body = self.parseBlock()
 	}
 	return NewFunction(utils.MixPosition(begin, self.curTok.Pos), attrs, pub != nil, ret, name, params, body)
+}
+
+// 方法
+func (self *Parser) parseMethod(begin utils.Position, pub bool, attrs []Attr) *Method {
+	for _, attr := range attrs {
+		switch attr.(type) {
+		case *AttrNoReturn, *AttrExit:
+		default:
+			self.throwErrorf(attr.Position(), errStrCanNotUseAttr)
+			return nil
+		}
+	}
+
+	self.expectNextIs(lex.LPA)
+	selfTok := self.expectNextIs(lex.IDENT)
+	self.expectNextIs(lex.RPA)
+
+	name := self.expectNextIs(lex.IDENT)
+	self.expectNextIs(lex.LPA)
+	mid := lex.COL
+	params := self.parseNameOrNilAndTypeList(&mid, lex.COM, false)
+	self.expectNextIs(lex.RPA)
+	ret := self.parseTypeOrNil()
+	var body *Block
+	if self.nextIs(lex.LBR) {
+		body = self.parseBlock()
+	}
+	return NewMethod(utils.MixPosition(begin, self.curTok.Pos), attrs, pub, selfTok, ret, name, params, body)
 }
 
 // 全局变量

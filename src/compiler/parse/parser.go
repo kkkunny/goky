@@ -13,6 +13,19 @@ type Ast interface {
 	Position() utils.Position // 获取位置
 }
 
+// Package 文件
+type Package struct {
+	Path  stlos.Path
+	Files []*File
+}
+
+func NewPackage(path stlos.Path, file ...*File) *Package {
+	return &Package{
+		Path:  path,
+		Files: file,
+	}
+}
+
 // File 文件
 type File struct {
 	Path    stlos.Path

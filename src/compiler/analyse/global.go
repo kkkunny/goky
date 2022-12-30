@@ -4,7 +4,6 @@ import (
 	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
-	"github.com/kkkunny/stl/types"
 )
 
 // Global 全局
@@ -46,6 +45,10 @@ func (self Function) IsTemporary() bool {
 	return true
 }
 
+func (self Function) IsConst() bool {
+	return false
+}
+
 // GlobalVariable 全局变量
 type GlobalVariable struct {
 	ExternName string
@@ -72,26 +75,23 @@ func (self GlobalVariable) IsTemporary() bool {
 	return false
 }
 
-// 函数模板
-type functionTemplate struct {
-	ast      *parse.FunctionHead
-	astAttrs []parse.Attr
-	impls    map[string]*Function
+func (self GlobalVariable) IsConst() bool {
+	return false
 }
 
 // *********************************************************************************************************************
 
 // 函数声明
-func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.FunctionHead) (*Function, utils.Error) {
-	retType, err := analyseType(ctx, ast.Tail.Function.Ret)
+func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, utils.Error) {
+	retType, err := analyseType(ctx, ast.Ret)
 	if err != nil {
 		return nil, err
 	}
 
-	params := make([]*Param, len(ast.Tail.Function.Params))
+	params := make([]*Param, len(ast.Params))
 	var errors []utils.Error
-	for i, p := range ast.Tail.Function.Params {
-		pt, err := analyseType(ctx, &p.Type)
+	for i, p := range ast.Params {
+		pt, err := analyseType(ctx, p.Type)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -111,32 +111,35 @@ func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.F
 
 	// 属性
 	errors = make([]utils.Error, 0)
-	for _, astAttr := range astAttrs {
-		switch {
-		case astAttr.Extern != nil:
-			f.ExternName = astAttr.Extern.Value
-		case astAttr.LinkAsm != nil:
-			linkPath := stlos.Path(*astAttr.LinkAsm)
-			if !linkPath.IsAbsolute() {
-				linkPath = ctx.path.Join(linkPath)
+	for _, astAttr := range ast.Attrs {
+		switch attr := astAttr.(type) {
+		case *parse.AttrExtern:
+			f.ExternName = attr.Name.Source
+		case *parse.AttrLink:
+			for _, asm := range attr.Asms {
+				linkPath := stlos.Path(asm.Value)
+				if !linkPath.IsAbsolute() {
+					linkPath = ctx.path.Join(linkPath)
+				}
+				if !linkPath.IsExist() {
+					errors = append(errors, utils.Errorf(asm.Position(), "can not find path `%s`", linkPath))
+				}
+				ctx.f.Links[linkPath] = struct{}{}
 			}
-			if !linkPath.IsExist() {
-				errors = append(errors, utils.Errorf(astAttr.Position, "can not find path `%s`", linkPath))
+			for _, lib := range attr.Libs {
+				ctx.f.Libs[string(lib.Value)] = struct{}{}
 			}
-			ctx.f.Links[linkPath] = struct{}{}
-		case astAttr.LinkLib != nil:
-			ctx.f.Libs[string(*astAttr.LinkLib)] = struct{}{}
-		case astAttr.NoReturn != nil:
+		case *parse.AttrNoReturn:
 			f.NoReturn = true
-		case astAttr.Exit != nil:
+		case *parse.AttrExit:
 			f.Exit = true
 			f.NoReturn = true
 		default:
-			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
+			panic("unknown attr")
 		}
 	}
-	if f.ExternName == "" && ast.Tail.Function.Body == nil {
-		errors = append(errors, utils.Errorf(ast.Tail.Function.Name.Position, "missing function body"))
+	if f.ExternName == "" && ast.Body == nil {
+		errors = append(errors, utils.Errorf(ast.Name.Pos, "missing function body"))
 	}
 	if len(errors) == 1 {
 		return nil, errors[0]
@@ -144,25 +147,25 @@ func analyseFunctionDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.F
 		return nil, utils.NewMultiError(errors...)
 	}
 
-	if !ctx.AddValue(ast.Public != nil, ast.Tail.Function.Name.Value, f) {
-		return nil, utils.Errorf(ast.Tail.Function.Name.Position, "duplicate identifier")
+	if !ctx.AddValue(ast.Public, ast.Name.Source, f) {
+		return nil, utils.Errorf(ast.Name.Pos, "duplicate identifier")
 	}
 	return f, nil
 }
 
 // 函数定义
-func analyseFunctionDef(ctx *packageContext, f *Function, ast parse.Function) utils.Error {
+func analyseFunctionDef(ctx *packageContext, f *Function, ast *parse.Function) utils.Error {
 	fctx := newFunctionContext(ctx, f.Ret)
 	for i, p := range f.Params {
 		name := ast.Params[i].Name
 		if name != nil {
-			if !fctx.AddValue(name.Value, p) {
-				return utils.Errorf(name.Position, "duplicate identifier")
+			if !fctx.AddValue(name.Source, p) {
+				return utils.Errorf(name.Pos, "duplicate identifier")
 			}
 		}
 	}
 
-	bctx, body, err := analyseBlock(fctx, *ast.Body, false)
+	bctx, body, err := analyseBlock(fctx, ast.Body, false)
 	if err != nil {
 		return err
 	} else if !bctx.IsEnd() {
@@ -170,7 +173,7 @@ func analyseFunctionDef(ctx *packageContext, f *Function, ast parse.Function) ut
 			body.Stmts = append(body.Stmts, &Return{})
 			bctx.SetEnd()
 		} else {
-			return utils.Errorf(ast.Name.Position, "function missing return")
+			return utils.Errorf(ast.Name.Pos, "function missing return")
 		}
 	}
 	f.Body = body
@@ -178,9 +181,9 @@ func analyseFunctionDef(ctx *packageContext, f *Function, ast parse.Function) ut
 }
 
 // 全局变量
-func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse.GlobalVariable) (*GlobalVariable, utils.Error) {
+func analyseGlobalVariable(ctx *packageContext, ast *parse.GlobalValue) (*GlobalVariable, utils.Error) {
 	if ast.Variable.Type == nil && ast.Variable.Value == nil {
-		return nil, utils.Errorf(ast.Variable.Name.Position, "expect a type or a value")
+		return nil, utils.Errorf(ast.Variable.Name.Pos, "expect a type or a value")
 	}
 
 	var typ Type
@@ -194,20 +197,25 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 
 	var value Expr
 	if ast.Variable.Type != nil && ast.Variable.Value != nil {
-		value, err = analyseConstantExpr(typ, *ast.Variable.Value)
+		value, err = analyseExpr(newBlockContext(newFunctionContext(ctx, None), false), typ, ast.Variable.Value)
 		if err != nil {
 			return nil, err
 		}
-		value, err = expectExpr(ast.Variable.Value.Position, typ, value)
+		value, err = expectExpr(ast.Variable.Value.Position(), typ, value)
 		if err != nil {
 			return nil, err
+		}
+		if !value.IsConst() {
+			return nil, utils.Errorf(ast.Variable.Value.Position(), "expect a constant value")
 		}
 	} else if ast.Variable.Type == nil && ast.Variable.Value != nil {
-		value, err = analyseConstantExpr(nil, *ast.Variable.Value)
+		value, err = analyseExpr(newBlockContext(newFunctionContext(ctx, None), false), nil, ast.Variable.Value)
 		if err != nil {
 			return nil, err
 		} else if IsNoneType(value.GetType()) {
-			return nil, utils.Errorf(ast.Variable.Value.Position, "expect a value")
+			return nil, utils.Errorf(ast.Variable.Value.Position(), "expect a value")
+		} else if !value.IsConst() {
+			return nil, utils.Errorf(ast.Variable.Value.Position(), "expect a constant value")
 		}
 		typ = value.GetType()
 	}
@@ -216,33 +224,36 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 		Type:  typ,
 		Value: value,
 	}
-	if !ctx.AddValue(ast.Public != nil, ast.Variable.Name.Value, v) {
-		return nil, utils.Errorf(ast.Variable.Name.Position, "duplicate identifier")
+	if !ctx.AddValue(ast.Public, ast.Variable.Name.Source, v) {
+		return nil, utils.Errorf(ast.Variable.Name.Pos, "duplicate identifier")
 	}
 
 	// 属性
 	var errors []utils.Error
-	for _, astAttr := range astAttrs {
-		switch {
-		case astAttr.Extern != nil:
-			v.ExternName = astAttr.Extern.Value
-		case astAttr.LinkAsm != nil:
-			linkPath := stlos.Path(*astAttr.LinkAsm)
-			if !linkPath.IsAbsolute() {
-				linkPath = ctx.path.Join(linkPath)
+	for _, astAttr := range ast.Attrs {
+		switch attr := astAttr.(type) {
+		case *parse.AttrExtern:
+			v.ExternName = attr.Name.Source
+		case *parse.AttrLink:
+			for _, asm := range attr.Asms {
+				linkPath := stlos.Path(asm.Value)
+				if !linkPath.IsAbsolute() {
+					linkPath = ctx.path.Join(linkPath)
+				}
+				if !linkPath.IsExist() {
+					errors = append(errors, utils.Errorf(asm.Position(), "can not find path `%s`", linkPath))
+				}
+				ctx.f.Links[linkPath] = struct{}{}
 			}
-			if !linkPath.IsExist() {
-				errors = append(errors, utils.Errorf(astAttr.Position, "can not find path `%s`", linkPath))
+			for _, lib := range attr.Libs {
+				ctx.f.Libs[string(lib.Value)] = struct{}{}
 			}
-			ctx.f.Links[linkPath] = struct{}{}
-		case astAttr.LinkLib != nil:
-			ctx.f.Libs[string(*astAttr.LinkLib)] = struct{}{}
 		default:
-			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
+			panic("unknown attr")
 		}
 	}
 	if v.ExternName == "" && ast.Variable.Value == nil {
-		errors = append(errors, utils.Errorf(ast.Variable.Name.Position, "missing value"))
+		errors = append(errors, utils.Errorf(ast.Variable.Name.Pos, "missing value"))
 	}
 	if len(errors) == 0 {
 		return v, nil
@@ -254,26 +265,23 @@ func analyseGlobalVariable(ctx *packageContext, astAttrs []parse.Attr, ast parse
 }
 
 // 方法声明
-func analyseMethodDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.FunctionHead) (*Function, utils.Error) {
-	_selfType, err := analyseType(ctx, &parse.Type{Ident: &parse.TypeIdent{
-		Position: ast.Tail.Method.Self.Position,
-		Name:     ast.Tail.Method.Self,
-	}})
+func analyseMethodDecl(ctx *packageContext, ast *parse.Method) (*Function, utils.Error) {
+	_selfType, err := analyseType(ctx, parse.NewTypeIdent(nil, ast.Self))
 	if err != nil {
 		return nil, err
 	}
 	selfType := NewPtrType(_selfType)
 
-	retType, err := analyseType(ctx, ast.Tail.Method.Ret)
+	retType, err := analyseType(ctx, ast.Ret)
 	if err != nil {
 		return nil, err
 	}
 
-	params := make([]*Param, len(ast.Tail.Method.Params)+1)
+	params := make([]*Param, len(ast.Params)+1)
 	params[0] = &Param{Type: selfType}
 	var errors []utils.Error
-	for i, p := range ast.Tail.Method.Params {
-		pt, err := analyseType(ctx, &p.Type)
+	for i, p := range ast.Params {
+		pt, err := analyseType(ctx, p.Type)
 		if err != nil {
 			errors = append(errors, err)
 			continue
@@ -293,15 +301,15 @@ func analyseMethodDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.Fun
 
 	// 属性
 	errors = make([]utils.Error, 0)
-	for _, astAttr := range astAttrs {
-		switch {
-		case astAttr.NoReturn != nil:
+	for _, astAttr := range ast.Attrs {
+		switch astAttr.(type) {
+		case *parse.AttrNoReturn:
 			f.NoReturn = true
-		case astAttr.Exit != nil:
+		case *parse.AttrExit:
 			f.Exit = true
 			f.NoReturn = true
 		default:
-			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
+			panic("unknown attr")
 		}
 	}
 	if len(errors) == 1 {
@@ -310,24 +318,21 @@ func analyseMethodDecl(ctx *packageContext, astAttrs []parse.Attr, ast parse.Fun
 		return nil, utils.NewMultiError(errors...)
 	}
 
-	name := _selfType.String() + "." + ast.Tail.Method.Name.Value
-	if !ctx.AddValue(ast.Public != nil, name, f) {
-		return nil, utils.Errorf(ast.Tail.Method.Name.Position, "duplicate identifier")
+	name := _selfType.String() + "." + ast.Name.Source
+	if !ctx.AddValue(ast.Public, name, f) {
+		return nil, utils.Errorf(ast.Name.Pos, "duplicate identifier")
 	}
 	return f, nil
 }
 
 // 方法定义
-func analyseMethodDef(ctx *packageContext, ast parse.Method) utils.Error {
-	_selfType, err := analyseType(ctx, &parse.Type{Ident: &parse.TypeIdent{
-		Position: ast.Self.Position,
-		Name:     ast.Self,
-	}})
+func analyseMethodDef(ctx *packageContext, ast *parse.Method) utils.Error {
+	_selfType, err := analyseType(ctx, parse.NewTypeIdent(nil, ast.Self))
 	if err != nil {
 		return err
 	}
 
-	name := _selfType.String() + "." + ast.Name.Value
+	name := _selfType.String() + "." + ast.Name.Source
 	f := ctx.GetValue(name).Second.(*Function)
 	fctx := newFunctionContext(ctx, f.Ret)
 	for i, p := range f.Params {
@@ -336,8 +341,8 @@ func analyseMethodDef(ctx *packageContext, ast parse.Method) utils.Error {
 		} else {
 			pn := ast.Params[i].Name
 			if pn != nil {
-				if !fctx.AddValue(pn.Value, p) {
-					return utils.Errorf(pn.Position, "duplicate identifier")
+				if !fctx.AddValue(pn.Source, p) {
+					return utils.Errorf(pn.Pos, "duplicate identifier")
 				}
 			}
 		}
@@ -351,41 +356,9 @@ func analyseMethodDef(ctx *packageContext, ast parse.Method) utils.Error {
 			body.Stmts = append(body.Stmts, &Return{})
 			bctx.SetEnd()
 		} else {
-			return utils.Errorf(ast.Name.Position, "function missing return")
+			return utils.Errorf(ast.Name.Pos, "function missing return")
 		}
 	}
 	f.Body = body
-	return nil
-}
-
-// 函数模板声明
-func analyseFunctionTemplateDecl(ctx *packageContext, astAttrs []parse.Attr, ast *parse.FunctionHead) utils.Error {
-	// 属性
-	var errors []utils.Error
-	for _, astAttr := range astAttrs {
-		switch {
-		case astAttr.NoReturn != nil:
-		case astAttr.Exit != nil:
-		default:
-			errors = append(errors, utils.Errorf(astAttr.Position, "attribute cannot be used for global variables"))
-		}
-	}
-	if ast.Tail.Function.Body == nil {
-		errors = append(errors, utils.Errorf(ast.Tail.Function.Name.Position, "missing function body"))
-	}
-	if len(errors) == 1 {
-		return errors[0]
-	} else if len(errors) > 1 {
-		return utils.NewMultiError(errors...)
-	}
-
-	if _, ok := ctx.funcTemplates[ast.Tail.Function.Name.Value]; ok {
-		return utils.Errorf(ast.Tail.Function.Name.Position, "duplicate identifier")
-	}
-	ctx.funcTemplates[ast.Tail.Function.Name.Value] = types.NewPair(ast.Public != nil, &functionTemplate{
-		ast:      ast,
-		astAttrs: astAttrs,
-		impls:    make(map[string]*Function),
-	})
 	return nil
 }

@@ -12,7 +12,7 @@ import (
 
 func main() {
 	ast := util.MustValue(parse.ParseFile("main.k"))
-	mean := util.MustValue(analyse.AnalyseMain(*ast))
+	mean := util.MustValue(analyse.AnalyseMain(ast))
 	out := string(util.MustValue(json.MarshalIndent(mean, "", "  ")))
 	fmt.Println(out)
 }

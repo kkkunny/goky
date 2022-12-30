@@ -2,11 +2,11 @@ package analyse
 
 import (
 	"fmt"
+	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
 	"github.com/kkkunny/stl/set"
 	"github.com/kkkunny/stl/table"
-	"github.com/kkkunny/stl/types"
 	"strings"
 )
 
@@ -410,32 +410,25 @@ func GetDepthBaseType(t Type) Type {
 	}
 }
 
-// 类型定义模板
-type typedefTemplate struct {
-	pkg   stlos.Path
-	ast   *parse.Typedef
-	impls map[string]*Typedef
-}
-
 // *********************************************************************************************************************
 
 // 类型
-func analyseType(ctx *packageContext, ast *parse.Type) (Type, utils.Error) {
+func analyseType(ctx *packageContext, ast parse.Type) (Type, utils.Error) {
 	if ast == nil {
 		return None, nil
 	}
-	switch {
-	case ast.Ident != nil:
-		return analyseTypeIdent(ctx, *ast.Ident, false)
-	case ast.Func != nil:
-		ret, err := analyseType(ctx, ast.Func.Ret)
+	switch typ := ast.(type) {
+	case *parse.TypeIdent:
+		return analyseTypeIdent(ctx, typ, false)
+	case *parse.TypeFunc:
+		ret, err := analyseType(ctx, typ.Ret)
 		if err != nil {
 			return nil, err
 		}
-		params := make([]Type, len(ast.Func.Params.Types))
+		params := make([]Type, len(typ.Params))
 		var errors []utils.Error
-		for i, p := range ast.Func.Params.Types {
-			param, err := analyseType(ctx, &p)
+		for i, p := range typ.Params {
+			param, err := analyseType(ctx, p)
 			if err != nil {
 				errors = append(errors, err)
 			} else {
@@ -449,17 +442,17 @@ func analyseType(ctx *packageContext, ast *parse.Type) (Type, utils.Error) {
 		} else {
 			return nil, utils.NewMultiError(errors...)
 		}
-	case ast.Array != nil:
-		elem, err := analyseType(ctx, &ast.Array.Elem)
+	case *parse.TypeArray:
+		elem, err := analyseType(ctx, typ.Elem)
 		if err != nil {
 			return nil, err
 		}
-		return NewArrayType(ast.Array.Size, elem), nil
-	case ast.Tuple != nil:
-		elems := make([]Type, len(ast.Tuple.Types.Types))
+		return NewArrayType(uint(typ.Size.Value), elem), nil
+	case *parse.TypeTuple:
+		elems := make([]Type, len(typ.Elems))
 		var errors []utils.Error
-		for i, e := range ast.Tuple.Types.Types {
-			elem, err := analyseType(ctx, &e)
+		for i, e := range typ.Elems {
+			elem, err := analyseType(ctx, e)
 			if err != nil {
 				errors = append(errors, err)
 			} else {
@@ -473,17 +466,17 @@ func analyseType(ctx *packageContext, ast *parse.Type) (Type, utils.Error) {
 		} else {
 			return nil, utils.NewMultiError(errors...)
 		}
-	case ast.Struct != nil:
+	case *parse.TypeStruct:
 		fields := table.NewLinkedHashMap[string, Type]()
 		var errors []utils.Error
-		for _, f := range ast.Struct.Fields {
-			ft, err := analyseType(ctx, &f.Type)
+		for _, f := range typ.Fields {
+			ft, err := analyseType(ctx, f.Type)
 			if err != nil {
 				errors = append(errors, err)
-			} else if fields.ContainKey(f.Name.Value) {
-				errors = append(errors, utils.Errorf(f.Name.Position, "duplicate identifier"))
+			} else if fields.ContainKey(f.Name.Source) {
+				errors = append(errors, utils.Errorf(f.Name.Pos, "duplicate identifier"))
 			} else {
-				fields.Set(f.Name.Value, ft)
+				fields.Set(f.Name.Source, ft)
 			}
 		}
 		if len(errors) == 0 {
@@ -493,8 +486,8 @@ func analyseType(ctx *packageContext, ast *parse.Type) (Type, utils.Error) {
 		} else {
 			return nil, utils.NewMultiError(errors...)
 		}
-	case ast.Pointer != nil:
-		elem, err := analyseType(ctx, ast.Pointer)
+	case *parse.TypePtr:
+		elem, err := analyseType(ctx, typ.Elem)
 		if err != nil {
 			return nil, err
 		}
@@ -561,9 +554,9 @@ func checkTypeCircle(tmp *set.LinkedHashSet[*Typedef], t Type) bool {
 }
 
 // 标识符类型
-func analyseTypeIdent(ctx *packageContext, ast parse.TypeIdent, isImport bool) (Type, utils.Error) {
-	if ast.Package == nil {
-		switch ast.Name.Value {
+func analyseTypeIdent(ctx *packageContext, ast *parse.TypeIdent, isImport bool) (Type, utils.Error) {
+	if ast.Pkg == nil {
+		switch ast.Name.Source {
 		case "i8":
 			return I8, nil
 		case "i16":
@@ -591,82 +584,17 @@ func analyseTypeIdent(ctx *packageContext, ast parse.TypeIdent, isImport bool) (
 		case "bool":
 			return Bool, nil
 		default:
-			// 泛型参数
-			if !ctx.templateParams.Empty() {
-				if tp, ok := ctx.templateParams.Peek()[ast.Name.Value]; ok {
-					return tp, nil
-				}
-			}
 			// 类型定义
-			if len(ast.Templates) == 0 {
-				if td, ok := ctx.typedefs[ast.Name.Value]; ok && (!isImport || td.First) {
-					return td.Second, nil
-				}
-			} else {
-				if tt, ok := ctx.typedefTemplates[ast.Name.Value]; ok && (!isImport || tt.First) {
-					// 模板参数数量
-					ftpn := len(tt.Second.ast.Templates)
-					if len(ast.Templates) != ftpn {
-						return nil, utils.Errorf(ast.Position, "expect `%d` template params", ftpn)
-					}
-					// 模板参数
-					tps := make([]Type, ftpn)
-					tpStrs := make([]string, ftpn)
-					tpMap := make(map[string]Type)
-					var errors []utils.Error
-					for i, tpAst := range ast.Templates {
-						tp, err := analyseType(ctx, &tpAst)
-						if err != nil {
-							errors = append(errors, err)
-							continue
-						}
-						tpNameAst := tt.Second.ast.Templates[i]
-						if _, ok := tpMap[tpNameAst.Value]; ok {
-							errors = append(errors, utils.Errorf(tpNameAst.Position, "duplicate identifier"))
-							continue
-						}
-						tps[i] = tp
-						tpStrs[i] = tp.String()
-						tpMap[tpNameAst.Value] = tp
-					}
-					if len(errors) == 1 {
-						return nil, errors[0]
-					} else if len(errors) > 1 {
-						return nil, utils.NewMultiError(errors...)
-					}
-					// 实现
-					name := fmt.Sprintf("%s<%s>", ast.Name.Value, strings.Join(tpStrs, ","))
-					if f, ok := tt.Second.impls[name]; ok {
-						return f, nil
-					}
-					td := NewTypedef(ctx.path, name, nil)
-					tt.Second.impls[name] = td
-					ctx.templateParams.Push(tpMap)
-					ctx.typedefs[name] = types.NewPair(false, td)
-					dst, err := analyseType(ctx, &tt.Second.ast.Dst)
-					if err != nil {
-						return nil, err
-					}
-					td.Dst = dst
-					if checkTypeCircle(set.NewLinkedHashSet[*Typedef](), td) {
-						return nil, utils.Errorf(tt.Second.ast.Name.Position, "circular reference")
-					}
-					ctx.templateParams.Pop()
-					return td, nil
-				}
+			if td, ok := ctx.typedefs[ast.Name.Source]; ok && (!isImport || td.First) {
+				return td.Second, nil
 			}
-			return nil, utils.Errorf(ast.Position, "unknown identifier")
+			return nil, utils.Errorf(ast.Position(), "unknown identifier")
 		}
 	} else {
-		pkg := ctx.externs[ast.Package.Value]
+		pkg := ctx.externs[ast.Pkg.Source]
 		if pkg == nil {
-			return nil, utils.Errorf(ast.Package.Position, "unknown `%s`", ast.Package.Value)
+			return nil, utils.Errorf(ast.Pkg.Pos, "unknown `%s`", ast.Pkg.Source)
 		}
-		astCpy := parse.TypeIdent{
-			Position:  ast.Position,
-			Name:      ast.Name,
-			Templates: ast.Templates,
-		}
-		return analyseTypeIdent(pkg, astCpy, true)
+		return analyseTypeIdent(pkg, parse.NewTypeIdent(nil, ast.Name), true)
 	}
 }
