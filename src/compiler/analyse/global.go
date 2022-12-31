@@ -207,11 +207,7 @@ func analyseGlobalVariable(ctx *packageContext, ast *parse.GlobalValue) (*Global
 
 	var value Expr
 	if ast.Variable.Type != nil && ast.Variable.Value != nil {
-		value, err = analyseExpr(newBlockContext(newFunctionContext(ctx, None), false), typ, ast.Variable.Value)
-		if err != nil {
-			return nil, err
-		}
-		value, err = expectExpr(ast.Variable.Value.Position(), typ, value)
+		value, err = expectExpr(newBlockContext(newFunctionContext(ctx, None), false), typ, ast.Variable.Value)
 		if err != nil {
 			return nil, err
 		}

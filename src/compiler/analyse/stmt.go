@@ -168,12 +168,11 @@ func analyseReturn(ctx *blockContext, ast *parse.Return) (*Return, utils.Error) 
 		if ret.Equal(None) {
 			return nil, utils.Errorf(ast.Position(), "not expect a return value")
 		} else {
-			value, err := analyseExpr(ctx, ret, ast.Value)
+			value, err := expectExpr(ctx, ret, ast.Value)
 			if err != nil {
 				return nil, err
 			}
-			value, err = expectExpr(ast.Value.Position(), ret, value)
-			return &Return{Value: value}, err
+			return &Return{Value: value}, nil
 		}
 	}
 }
@@ -195,11 +194,7 @@ func analyseVariable(ctx *blockContext, ast *parse.Variable) (*Variable, utils.E
 
 	var value Expr
 	if ast.Type != nil && ast.Value != nil {
-		value, err = analyseExpr(ctx, typ, ast.Value)
-		if err != nil {
-			return nil, err
-		}
-		value, err = expectExpr(ast.Value.Position(), typ, value)
+		value, err = expectExpr(ctx, typ, ast.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -227,11 +222,7 @@ func analyseVariable(ctx *blockContext, ast *parse.Variable) (*Variable, utils.E
 
 // 条件分支
 func analyseIfElse(ctx *blockContext, ast *parse.IfElse) (*IfElse, utils.Error, bool) {
-	cond, err := analyseExpr(ctx, Bool, ast.Cond)
-	if err != nil {
-		return nil, err, false
-	}
-	cond, err = expectExprAndSon(ast.Cond.Position(), Bool, cond)
+	cond, err := expectExprAndSon(ctx, Bool, ast.Cond)
 	if err != nil {
 		return nil, err, false
 	}
@@ -279,11 +270,7 @@ func analyseIfElse(ctx *blockContext, ast *parse.IfElse) (*IfElse, utils.Error, 
 
 // 循环
 func analyseFor(ctx *blockContext, ast *parse.Loop) (*Loop, utils.Error) {
-	cond, err := analyseExpr(ctx, Bool, ast.Cond)
-	if err != nil {
-		return nil, err
-	}
-	cond, err = expectExprAndSon(ast.Cond.Position(), Bool, cond)
+	cond, err := expectExprAndSon(ctx, Bool, ast.Cond)
 	if err != nil {
 		return nil, err
 	}

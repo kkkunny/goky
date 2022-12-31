@@ -142,9 +142,6 @@ func (self Binary) IsConst() bool {
 
 // FuncCall 函数调用
 type FuncCall struct {
-	NoReturn bool
-	Exit     bool
-
 	Func Expr
 	Args []Expr
 }
@@ -169,9 +166,6 @@ func (self FuncCall) IsConst() bool {
 
 // MethodCall 方法调用
 type MethodCall struct {
-	NoReturn bool
-	Exit     bool
-
 	Method *Method
 	Args   []Expr
 }
@@ -646,30 +640,31 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 			}
 			return &EmptyArray{Type: expect}, nil
 		}
-		expects := make([]Type, len(expr.Elems))
 		if expect != nil {
 			if at, ok := GetBaseType(expect).(*TypeArray); ok && at.Size == uint(len(expr.Elems)) {
-				for i := range expects {
-					expects[i] = at.Elem
-				}
+				expect = at.Elem
 			}
 		}
-		elems, err := analyseExprList(ctx, expects, expr.Elems)
-		if err != nil {
-			return nil, err
-		}
-		var errors []utils.Error
+
+		elems := make([]Expr, len(expr.Elems))
+		var errs []utils.Error
 		for i, e := range expr.Elems {
-			elems[i], err = expectExpr(e.Position(), elems[0].GetType(), elems[i])
+			var err utils.Error
+			if elems[0] == nil {
+				elems[i], err = analyseExpr(ctx, expect, e)
+			} else {
+				elems[i], err = expectExpr(ctx, elems[0].GetType(), e)
+			}
 			if err != nil {
-				errors = append(errors, err)
+				errs = append(errs, err)
 			}
 		}
-		if len(errors) == 1 {
-			return nil, errors[0]
-		} else if len(errors) > 1 {
-			return nil, utils.NewMultiError(errors...)
+		if len(errs) == 1 {
+			return nil, errs[0]
+		} else if len(errs) > 1 {
+			return nil, utils.NewMultiError(errs...)
 		}
+
 		var rt Type = NewArrayType(uint(len(elems)), elems[0].GetType())
 		if expect != nil && GetDepthBaseType(expect).Equal(GetDepthBaseType(rt)) {
 			rt = expect
@@ -769,11 +764,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 				},
 			}, nil
 		case lex.NOT:
-			value, err := analyseExpr(ctx, expect, expr.Value)
-			if err != nil {
-				return nil, err
-			}
-			value, err = expectExprAndSon(expr.Value.Position(), Bool, value)
+			value, err := expectExprAndSon(ctx, expect, expr.Value)
 			if err != nil {
 				return nil, err
 			}
@@ -824,11 +815,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 			return nil, err
 		}
 		lt := left.GetType()
-		right, err := analyseExpr(ctx, lt, expr.Right)
-		if err != nil {
-			return nil, err
-		}
-		right, err = expectExpr(expr.Right.Position(), lt, right)
+		right, err := expectExpr(ctx, lt, expr.Right)
 		if err != nil {
 			return nil, err
 		}
@@ -890,11 +877,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 			Right: right,
 		}, nil
 	case *parse.Ternary:
-		cond, err := analyseExpr(ctx, Bool, expr.Cond)
-		if err != nil {
-			return nil, err
-		}
-		cond, err = expectExprAndSon(expr.Cond.Position(), Bool, cond)
+		cond, err := expectExprAndSon(ctx, Bool, expr.Cond)
 		if err != nil {
 			return nil, err
 		}
@@ -902,11 +885,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 		if err != nil {
 			return nil, err
 		}
-		fv, err := analyseExpr(ctx, tv.GetType(), expr.False)
-		if err != nil {
-			return nil, err
-		}
-		fv, err = expectExpr(expr.False.Position(), tv.GetType(), fv)
+		fv, err := expectExpr(ctx, tv.GetType(), expr.False)
 		if err != nil {
 			return nil, err
 		}
@@ -929,80 +908,49 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 			if len(ft.Params)-1 != len(expr.Args) {
 				return nil, utils.Errorf(expr.Func.Position(), "expect %d arguments", len(ft.Params)-1)
 			}
-			args, err := analyseExprList(ctx, ft.Params[1:], expr.Args)
-			if err != nil {
-				return nil, err
-			}
-			var errors []utils.Error
+
+			args := make([]Expr, len(expr.Args))
+			var errs []utils.Error
 			for i, pt := range ft.Params[1:] {
 				var err utils.Error
-				args[i], err = expectExpr(expr.Args[i].Position(), pt, args[i])
+				args[i], err = expectExpr(ctx, pt, expr.Args[i])
 				if err != nil {
-					errors = append(errors, err)
+					errs = append(errs, err)
 				}
 			}
-			if len(errors) == 1 {
-				return nil, errors[0]
-			} else if len(errors) > 1 {
-				return nil, utils.NewMultiError(errors...)
-			}
-
-			var noReturn bool
-			var exit bool
-			if g, ok := f.(*Function); ok {
-				if g.Exit {
-					exit = true
-				}
-				if g.NoReturn {
-					noReturn = true
-					ctx.SetEnd()
-				}
+			if len(errs) == 1 {
+				return nil, errs[0]
+			} else if len(errs) > 1 {
+				return nil, utils.NewMultiError(errs...)
 			}
 
 			return &MethodCall{
-				NoReturn: noReturn,
-				Exit:     exit,
-				Method:   method,
-				Args:     args,
+				Method: method,
+				Args:   args,
 			}, nil
 		} else {
 			if len(ft.Params) != len(expr.Args) {
 				return nil, utils.Errorf(expr.Func.Position(), "expect %d arguments", len(ft.Params))
 			}
-			args, err := analyseExprList(ctx, ft.Params, expr.Args)
-			if err != nil {
-				return nil, err
-			}
-			var errors []utils.Error
-			for i, a := range args {
-				a, err = expectExpr(expr.Args[i].Position(), ft.Params[i], a)
-				if err != nil {
-					errors = append(errors, err)
-				}
-			}
-			if len(errors) == 1 {
-				return nil, errors[0]
-			} else if len(errors) > 1 {
-				return nil, utils.NewMultiError(errors...)
-			}
 
-			var noReturn bool
-			var exit bool
-			if g, ok := f.(*Function); ok {
-				if g.Exit {
-					exit = true
+			args := make([]Expr, len(expr.Args))
+			var errs []utils.Error
+			for i, pt := range ft.Params {
+				var err utils.Error
+				args[i], err = expectExpr(ctx, pt, expr.Args[i])
+				if err != nil {
+					errs = append(errs, err)
 				}
-				if g.NoReturn {
-					noReturn = true
-					ctx.SetEnd()
-				}
+			}
+			if len(errs) == 1 {
+				return nil, errs[0]
+			} else if len(errs) > 1 {
+				return nil, utils.NewMultiError(errs...)
 			}
 
 			return &FuncCall{
-				NoReturn: noReturn,
-				Exit:     exit,
-				Func:     f,
-				Args:     args,
+				Func: f,
+				Args: args,
 			}, nil
 		}
 	case *parse.Dot:
@@ -1067,11 +1015,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 		}
 		switch pt := GetBaseType(prefix.GetType()).(type) {
 		case *TypeArray:
-			index, err := analyseExpr(ctx, Usize, expr.Index)
-			if err != nil {
-				return nil, err
-			}
-			index, err = expectExprAndSon(expr.Index.Position(), Usize, index)
+			index, err := expectExprAndSon(ctx, Usize, expr.Index)
 			if err != nil {
 				return nil, err
 			}
@@ -1081,11 +1025,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 				Index: index,
 			}, nil
 		case *TypePtr:
-			index, err := analyseExpr(ctx, Usize, expr.Index)
-			if err != nil {
-				return nil, err
-			}
-			index, err = expectExprAndSon(expr.Index.Position(), Usize, index)
+			index, err := expectExprAndSon(ctx, Usize, expr.Index)
 			if err != nil {
 				return nil, err
 			}
@@ -1142,19 +1082,39 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 }
 
 // 期待指定类型的表达式
-func expectExpr(pos utils.Position, expect Type, expr Expr) (Expr, utils.Error) {
-	if !expr.GetType().Equal(expect) {
-		return nil, utils.Errorf(pos, "expect type `%s`", expect)
+func expectExprWithType(pos utils.Position, expect Type, expr Expr) (Expr, utils.Error) {
+	exprType := expr.GetType()
+	if !exprType.Equal(expect) {
+		return nil, utils.Errorf(pos, "expect type `%s` but there is `%s`", expect, exprType)
 	}
 	return expr, nil
 }
 
 // 期待指定类型的表达式及其子类型
-func expectExprAndSon(pos utils.Position, expect Type, expr Expr) (Expr, utils.Error) {
-	if !GetDepthBaseType(expr.GetType()).Equal(GetDepthBaseType(expect)) {
-		return nil, utils.Errorf(pos, "expect type `%s`", expect)
+func expectExprWithTypeAndSon(pos utils.Position, expect Type, expr Expr) (Expr, utils.Error) {
+	exprType := expr.GetType()
+	if !GetDepthBaseType(exprType).Equal(GetDepthBaseType(expect)) {
+		return nil, utils.Errorf(pos, "expect type `%s` but there is `%s`", expect, exprType)
 	}
 	return expr, nil
+}
+
+// 期待指定类型的表达式
+func expectExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Error) {
+	expr, err := analyseExpr(ctx, expect, ast)
+	if err != nil {
+		return nil, err
+	}
+	return expectExprWithType(ast.Position(), expect, expr)
+}
+
+// 期待指定类型的表达式及其子类型
+func expectExprAndSon(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Error) {
+	expr, err := analyseExpr(ctx, expect, ast)
+	if err != nil {
+		return nil, err
+	}
+	return expectExprWithTypeAndSon(ast.Position(), expect, expr)
 }
 
 // 获取类型默认值
