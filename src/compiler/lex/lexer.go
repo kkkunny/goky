@@ -129,10 +129,6 @@ func (self *Lexer) scanNumber() Token {
 
 	var buf strings.Builder
 	var point int
-	if self.ch == '-' {
-		buf.WriteRune(self.ch)
-		self.next()
-	}
 	for self.ch == '.' || utils.IsNumber(self.ch) {
 		if self.ch == '.' {
 			point++
@@ -253,7 +249,7 @@ func (self *Lexer) Scan() Token {
 		return self.scanIdent()
 	} else if self.ch == '@' {
 		return self.scanAttr()
-	} else if utils.IsNumber(self.ch) || (self.ch == '-' && utils.IsNumber(self.peek())) {
+	} else if utils.IsNumber(self.ch) {
 		return self.scanNumber()
 	} else if self.ch == '\'' {
 		return self.scanChar()

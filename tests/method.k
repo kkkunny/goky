@@ -7,5 +7,5 @@ func (A) get()i32{
 @extern(main)
 func main()u8{
     let a: A = 1
-    return a.get() as u8
+    return a.get() as u8 - 1
 }

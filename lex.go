@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	k := stlos.Path("main.k")
+	k := stlos.Path(os.Args[1])
 	lexer := lex.NewLexer(k, strings.NewReader(string(util.MustValue(os.ReadFile(k.String())))))
 	for tok := lexer.Scan(); tok.Kind != lex.EOF; tok = lexer.Scan() {
 		fmt.Println(tok)

@@ -504,7 +504,18 @@ func (self *Parser) parseStringExpr() *String {
 // 一元表达式前缀
 func (self *Parser) parsePrefixUnaryExpr() Expr {
 	switch self.nextTok.Kind {
-	case lex.SUB, lex.NEG, lex.NOT, lex.AND, lex.MUL:
+	case lex.SUB:
+		self.next()
+		op := self.curTok
+		v := self.parsePrefixUnaryExpr()
+		if lit, ok := v.(*Int); ok {
+			lit.Value = -lit.Value
+			lit.Token.Pos = utils.MixPosition(op.Pos, lit.Token.Pos)
+			lit.Token.Source = "-" + lit.Token.Source
+			return lit
+		}
+		return NewUnary(op, v)
+	case lex.NEG, lex.NOT, lex.AND, lex.MUL:
 		self.next()
 		op := self.curTok
 		v := self.parsePrefixUnaryExpr()
