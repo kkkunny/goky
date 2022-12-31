@@ -1,6 +1,7 @@
 package lex
 
 import (
+	"fmt"
 	"github.com/kkkunny/klang/src/compiler/utils"
 )
 
@@ -242,4 +243,8 @@ type Token struct {
 	Pos    utils.Position // 位置
 	Kind   TokenKind      // kind
 	Source string         // 源码
+}
+
+func (self Token) String() string {
+	return fmt.Sprintf("<%s: %s>", self.Kind, self.Source)
 }

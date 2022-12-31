@@ -46,6 +46,9 @@ func (self *CodeGenerator) Codegen(mean analyse.ProgramContext) llvm.Module {
 			if global.NoReturn {
 				f.AddFunctionAttr(self.ctx.CreateEnumAttribute(31, 0))
 			}
+			if global.Noinline {
+				f.AddFunctionAttr(self.ctx.CreateEnumAttribute(26, 0))
+			}
 			self.vars[global] = f
 		case *analyse.GlobalVariable:
 			vt := self.codegenType(global.GetType())

@@ -17,6 +17,7 @@ type Function struct {
 	ExternName string // 外部名
 	NoReturn   bool   // 函数是否不返回
 	Exit       bool   // 函数是否会导致程序退出
+	Noinline   bool   // 函数不会被内联
 
 	Ret    Type
 	Params []*Param
@@ -134,6 +135,8 @@ func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, u
 		case *parse.AttrExit:
 			f.Exit = true
 			f.NoReturn = true
+		case *parse.AttrNoInline:
+			f.Noinline = true
 		default:
 			panic("unknown attr")
 		}
@@ -308,6 +311,8 @@ func analyseMethodDecl(ctx *packageContext, ast *parse.Method) (*Function, utils
 		case *parse.AttrExit:
 			f.Exit = true
 			f.NoReturn = true
+		case *parse.AttrNoInline:
+			f.Noinline = true
 		default:
 			panic("unknown attr")
 		}

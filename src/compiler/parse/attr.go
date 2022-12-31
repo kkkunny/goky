@@ -81,6 +81,21 @@ func (self AttrExit) Position() utils.Position {
 
 func (self AttrExit) Attr() {}
 
+// AttrNoInline @noinline
+type AttrNoInline struct {
+	Pos utils.Position
+}
+
+func NewAttrNoInline(pos utils.Position) *AttrNoInline {
+	return &AttrNoInline{Pos: pos}
+}
+
+func (self AttrNoInline) Position() utils.Position {
+	return self.Pos
+}
+
+func (self AttrNoInline) Attr() {}
+
 // ****************************************************************
 
 func (self *Parser) parseAttr() Attr {
@@ -116,6 +131,8 @@ func (self *Parser) parseAttr() Attr {
 		return NewAttrNoReturn(attrName.Pos)
 	case "@exit":
 		return NewAttrExit(attrName.Pos)
+	case "@noinline":
+		return NewAttrNoInline(attrName.Pos)
 	default:
 		self.throwErrorf(attrName.Pos, "unknown attribute")
 		return nil

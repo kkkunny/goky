@@ -46,6 +46,10 @@ func (self Variable) IsTemporary() bool {
 	return false
 }
 
+func (self Variable) IsConst() bool {
+	return false
+}
+
 // IfElse 条件分支
 type IfElse struct {
 	Cond        Expr
