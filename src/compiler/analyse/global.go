@@ -1,6 +1,7 @@
 package analyse
 
 import (
+	"github.com/kkkunny/klang/src/compiler/lex"
 	"github.com/kkkunny/klang/src/compiler/parse"
 	"github.com/kkkunny/klang/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
@@ -17,7 +18,7 @@ type Function struct {
 	ExternName string // 外部名
 	NoReturn   bool   // 函数是否不返回
 	Exit       bool   // 函数是否会导致程序退出
-	Noinline   bool   // 函数不会被内联
+	Inline     *bool  // 函数是否强制内联或者强制不内联
 
 	Ret    Type
 	Params []*Param
@@ -135,8 +136,14 @@ func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, u
 		case *parse.AttrExit:
 			f.Exit = true
 			f.NoReturn = true
-		case *parse.AttrNoInline:
-			f.Noinline = true
+		case *parse.AttrInline:
+			var v bool
+			if attr.Value.Kind == lex.TRUE {
+				v = true
+			} else {
+				v = false
+			}
+			f.Inline = &v
 		default:
 			panic("unknown attr")
 		}
@@ -305,14 +312,20 @@ func analyseMethodDecl(ctx *packageContext, ast *parse.Method) (*Function, utils
 	// 属性
 	errors = make([]utils.Error, 0)
 	for _, astAttr := range ast.Attrs {
-		switch astAttr.(type) {
+		switch attr := astAttr.(type) {
 		case *parse.AttrNoReturn:
 			f.NoReturn = true
 		case *parse.AttrExit:
 			f.Exit = true
 			f.NoReturn = true
-		case *parse.AttrNoInline:
-			f.Noinline = true
+		case *parse.AttrInline:
+			var v bool
+			if attr.Value.Kind == lex.TRUE {
+				v = true
+			} else {
+				v = false
+			}
+			f.Inline = &v
 		default:
 			panic("unknown attr")
 		}

@@ -3,6 +3,7 @@ package codegen
 import (
 	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/analyse"
+	stlutil "github.com/kkkunny/stl/util"
 )
 
 // CodeGenerator 代码生成器
@@ -46,8 +47,8 @@ func (self *CodeGenerator) Codegen(mean analyse.ProgramContext) llvm.Module {
 			if global.NoReturn {
 				f.AddFunctionAttr(self.ctx.CreateEnumAttribute(31, 0))
 			}
-			if global.Noinline {
-				f.AddFunctionAttr(self.ctx.CreateEnumAttribute(26, 0))
+			if global.Inline != nil {
+				f.AddFunctionAttr(self.ctx.CreateEnumAttribute(stlutil.Ternary[uint](*global.Inline, 1, 26), 0))
 			}
 			self.vars[global] = f
 		case *analyse.GlobalVariable:

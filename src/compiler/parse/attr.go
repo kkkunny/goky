@@ -81,20 +81,24 @@ func (self AttrExit) Position() utils.Position {
 
 func (self AttrExit) Attr() {}
 
-// AttrNoInline @noinline
-type AttrNoInline struct {
-	Pos utils.Position
+// AttrInline @inline
+type AttrInline struct {
+	Pos   utils.Position
+	Value lex.Token
 }
 
-func NewAttrNoInline(pos utils.Position) *AttrNoInline {
-	return &AttrNoInline{Pos: pos}
+func NewAttrInline(pos utils.Position, v lex.Token) *AttrInline {
+	return &AttrInline{
+		Pos:   pos,
+		Value: v,
+	}
 }
 
-func (self AttrNoInline) Position() utils.Position {
+func (self AttrInline) Position() utils.Position {
 	return self.Pos
 }
 
-func (self AttrNoInline) Attr() {}
+func (self AttrInline) Attr() {}
 
 // ****************************************************************
 
@@ -131,8 +135,16 @@ func (self *Parser) parseAttr() Attr {
 		return NewAttrNoReturn(attrName.Pos)
 	case "@exit":
 		return NewAttrExit(attrName.Pos)
-	case "@noinline":
-		return NewAttrNoInline(attrName.Pos)
+	case "@inline":
+		self.expectNextIs(lex.LPA)
+		var v lex.Token
+		if self.skipNextIs(lex.FALSE) {
+			v = self.curTok
+		} else {
+			v = self.expectNextIs(lex.TRUE)
+		}
+		end := self.expectNextIs(lex.RPA).Pos
+		return NewAttrInline(utils.MixPosition(attrName.Pos, end), v)
 	default:
 		self.throwErrorf(attrName.Pos, "unknown attribute")
 		return nil
