@@ -304,10 +304,30 @@ func (self *Lexer) Scan() Token {
 				buf.WriteRune(self.next())
 				kind = DIS
 			} else if self.peek() == '/' {
-				self.next()
-				buf.WriteRune(self.ch)
+				buf.WriteRune(self.next())
 				for nc := self.peek(); nc != '\n' && nc != 0; nc = self.peek() {
 					buf.WriteRune(self.next())
+				}
+				kind = COMMENT
+			} else if self.peek() == '*' {
+				buf.WriteRune(self.next())
+				self.next()
+				var lastRune rune
+				for {
+					if self.ch == 0 {
+						pos.SetEnd(self.pos, self.row, self.col)
+						return Token{
+							Pos:    pos,
+							Kind:   ILLEGAL,
+							Source: buf.String(),
+						}
+					}
+					buf.WriteRune(self.ch)
+					if lastRune == '*' && self.ch == '/' {
+						break
+					}
+					lastRune = self.ch
+					self.next()
 				}
 				kind = COMMENT
 			}

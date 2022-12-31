@@ -2,7 +2,7 @@
 @extern(main)
 func main()u8{
     /*
-        comment 
+        comment
     */return 0
 }
 // file end
