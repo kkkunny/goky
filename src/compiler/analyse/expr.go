@@ -561,6 +561,29 @@ func (self Method) IsConst() bool {
 	return false
 }
 
+// GetTypeBytes 获取类型占用byte
+type GetTypeBytes struct {
+	Type Type
+}
+
+func (self GetTypeBytes) stmt() {}
+
+func (self GetTypeBytes) GetType() Type {
+	return Usize
+}
+
+func (self GetTypeBytes) GetMut() bool {
+	return false
+}
+
+func (self GetTypeBytes) IsTemporary() bool {
+	return true
+}
+
+func (self GetTypeBytes) IsConst() bool {
+	return false
+}
+
 // *********************************************************************************************************************
 
 // 表达式
@@ -897,6 +920,9 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 	case *parse.Call:
 		f, err := analyseExpr(ctx, nil, expr.Func)
 		if err != nil {
+			if ident, ok := expr.Func.(*parse.Ident); ok && ident.Pkg == nil {
+				return analyseBuildInFuncCall(ctx, ident, expr.Args)
+			}
 			return nil, err
 		}
 		ft, ok := GetBaseType(f.GetType()).(*TypeFunc)
@@ -1194,12 +1220,65 @@ func analyseIdent(ctx *blockContext, ast *parse.Ident) (Expr, utils.Error) {
 	} else {
 		pkg := ctx.GetPackageContext().externs[ast.Pkg.Source]
 		if pkg == nil {
-			return nil, utils.Errorf(ast.Pkg.Pos, "unknown `%s`", ast.Pkg.Source)
+			return nil, utils.Errorf(ast.Pkg.Pos, "unknown identifier")
 		}
 		value := pkg.GetValue(ast.Name.Source)
 		if !value.First || value.Second == nil {
-			return nil, utils.Errorf(ast.Name.Pos, "unknown `%s`", ast.Name.Source)
+			return nil, utils.Errorf(ast.Name.Pos, "unknown identifier")
 		}
 		return value.Second, nil
+	}
+}
+
+// 内置函数调用
+func analyseBuildInFuncCall(ctx *blockContext, ident *parse.Ident, paramAsts []parse.Expr) (Expr, utils.Error) {
+	switch ident.Name.Source {
+	case "len":
+		if len(paramAsts) != 1 {
+			return nil, utils.Errorf(ident.Position(), "expect 1 arguments")
+		}
+		param, err := analyseExpr(ctx, nil, paramAsts[0])
+		if err != nil {
+			return nil, err
+		}
+		array, ok := GetBaseType(param.GetType()).(*TypeArray)
+		if !ok {
+			return nil, utils.Errorf(paramAsts[0].Position(), "expect a array")
+		}
+		return &Integer{
+			Type:  Usize,
+			Value: int64(array.Size),
+		}, nil
+	case "typename":
+		if len(paramAsts) != 1 {
+			return nil, utils.Errorf(ident.Position(), "expect 1 arguments")
+		}
+		param, err := analyseExpr(ctx, nil, paramAsts[0])
+		if err != nil {
+			return nil, err
+		}
+		typename := []rune(param.GetType().String())
+		elems := make([]Expr, len(typename))
+		for i, e := range typename {
+			elems[i] = &Integer{
+				Type:  I32,
+				Value: int64(e),
+			}
+		}
+		return &Array{
+			Type:  NewArrayType(uint(len(elems)), I32),
+			Elems: elems,
+		}, nil
+	case "size":
+		if len(paramAsts) != 1 {
+			return nil, utils.Errorf(ident.Position(), "expect 1 arguments")
+		}
+		param, err := analyseExpr(ctx, nil, paramAsts[0])
+		if err != nil {
+			return nil, err
+		}
+		return &GetTypeBytes{Type: param.GetType()}, nil
+	default:
+		return nil, utils.Errorf(ident.Position(), "unknown identifier")
 	}
 }

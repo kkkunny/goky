@@ -542,7 +542,6 @@ func (self *Parser) parseSuffixUnaryExpr(front Expr) Expr {
 		front = NewCall(utils.MixPosition(front.Position(), end), front, args...)
 	case lex.LBA:
 		self.next()
-		self.expectNextIs(lex.LBA)
 		index := self.parseExpr()
 		end := self.expectNextIs(lex.RBA).Pos
 		front = NewIndex(utils.MixPosition(front.Position(), end), front, index)

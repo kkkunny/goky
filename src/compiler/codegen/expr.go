@@ -94,7 +94,7 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			return phi
 		case "||":
 			nb, eb := llvm.AddBasicBlock(self.function, ""), llvm.AddBasicBlock(self.function, "")
-			self.builder.CreateCondBr(self.codegenExpr(expr.Left, true), nb, eb)
+			self.builder.CreateCondBr(self.codegenExpr(expr.Left, true), eb, nb)
 			pb := self.builder.GetInsertBlock()
 
 			self.builder.SetInsertPointAtEnd(nb)
@@ -190,7 +190,8 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			return self.equal(left, right)
 		case "!=":
 			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			return self.builder.CreateNot(self.equal(left, right), "")
+			left = self.equal(left, right)
+			return self.builder.CreateXor(left, llvm.ConstInt(left.Type(), 1, true), "")
 		case "<":
 			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
 			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
@@ -233,7 +234,8 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 	case *analyse.Unary:
 		switch expr.Opera {
 		case "!":
-			return self.builder.CreateNot(self.codegenExpr(expr.Value, true), "")
+			left := self.codegenExpr(expr.Value, true)
+			return self.builder.CreateXor(left, llvm.ConstInt(left.Type(), 1, true), "")
 		case "&":
 			return self.codegenExpr(expr.Value, false)
 		case "*":
@@ -379,6 +381,8 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			v = self.builder.CreateLoad(v.Type().ElementType(), v, "")
 		}
 		return v
+	case *analyse.GetTypeBytes:
+		return llvm.SizeOf(self.codegenType(expr.Type))
 	default:
 		panic("")
 	}

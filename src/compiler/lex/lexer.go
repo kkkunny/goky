@@ -160,14 +160,16 @@ func (self *Lexer) scanChar() Token {
 	pos.SetBegin(self.pos, self.row, self.col)
 
 	var buf strings.Builder
+	var lastRune rune
 	for self.ch != 0 {
 		ch := self.ch
 		buf.WriteRune(ch)
 		pos.SetEnd(self.pos, self.row, self.col)
 		self.next()
-		if buf.Len() != 1 && ch == '\'' {
+		if buf.Len() != 1 && ch == '\'' && lastRune != '\\' {
 			break
 		}
+		lastRune = ch
 	}
 	s := buf.String()
 	runes := []rune(s)
@@ -194,14 +196,16 @@ func (self *Lexer) scanString() Token {
 	pos.SetBegin(self.pos, self.row, self.col)
 
 	var buf strings.Builder
+	var lastRune rune
 	for self.ch != 0 {
 		ch := self.ch
 		buf.WriteRune(ch)
 		pos.SetEnd(self.pos, self.row, self.col)
 		self.next()
-		if buf.Len() != 1 && ch == '"' {
+		if buf.Len() != 1 && ch == '"' && lastRune != '\\' {
 			break
 		}
+		lastRune = ch
 	}
 	s := buf.String()
 

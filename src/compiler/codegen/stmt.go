@@ -6,23 +6,29 @@ import (
 )
 
 // 代码块
-func (self *CodeGenerator) codegenBlock(mean analyse.Block) {
+func (self *CodeGenerator) codegenBlock(mean analyse.Block) bool {
 	for _, stmt := range mean.Stmts {
-		self.codegenStmt(stmt)
+		if !self.codegenStmt(stmt) {
+			return false
+		}
 	}
+	return true
 }
 
 // 语句
-func (self *CodeGenerator) codegenStmt(mean analyse.Stmt) {
+func (self *CodeGenerator) codegenStmt(mean analyse.Stmt) bool {
 	switch meanStmt := mean.(type) {
 	case *analyse.Return:
 		self.codegenReturn(*meanStmt)
+		return false
 	case *analyse.Variable:
 		self.codegenVariable(meanStmt)
 	case analyse.Expr:
 		self.codegenExpr(meanStmt, true)
 	case *analyse.Block:
-		self.codegenBlock(*meanStmt)
+		if !self.codegenBlock(*meanStmt) {
+			return false
+		}
 	case *analyse.IfElse:
 		self.codegenIfElse(*meanStmt)
 	case *analyse.Loop:
@@ -34,6 +40,7 @@ func (self *CodeGenerator) codegenStmt(mean analyse.Stmt) {
 	default:
 		panic("")
 	}
+	return true
 }
 
 // 函数返回
@@ -65,8 +72,9 @@ func (self *CodeGenerator) codegenIfElse(mean analyse.IfElse) {
 		self.builder.CreateCondBr(cond, tb, eb)
 
 		self.builder.SetInsertPointAtEnd(tb)
-		self.codegenBlock(*mean.True)
-		self.builder.CreateBr(eb)
+		if self.codegenBlock(*mean.True) {
+			self.builder.CreateBr(eb)
+		}
 
 		self.builder.SetInsertPointAtEnd(eb)
 	} else {
@@ -74,12 +82,14 @@ func (self *CodeGenerator) codegenIfElse(mean analyse.IfElse) {
 		self.builder.CreateCondBr(cond, tb, fb)
 
 		self.builder.SetInsertPointAtEnd(tb)
-		self.codegenBlock(*mean.True)
-		self.builder.CreateBr(eb)
+		if self.codegenBlock(*mean.True) {
+			self.builder.CreateBr(eb)
+		}
 
 		self.builder.SetInsertPointAtEnd(fb)
-		self.codegenBlock(*mean.False)
-		self.builder.CreateBr(eb)
+		if self.codegenBlock(*mean.False) {
+			self.builder.CreateBr(eb)
+		}
 
 		self.builder.SetInsertPointAtEnd(eb)
 	}
@@ -97,8 +107,10 @@ func (self *CodeGenerator) codegenLoop(mean analyse.Loop) {
 	cbBk, ebBk := self.cb, self.eb
 	self.cb, self.eb = cb, eb
 	self.builder.SetInsertPointAtEnd(lb)
-	self.codegenBlock(*mean.Body)
-	self.builder.CreateBr(cb)
+	if self.codegenBlock(*mean.Body) {
+		self.builder.CreateBr(cb)
+	}
+
 	self.cb, self.eb = cbBk, ebBk
 
 	self.builder.SetInsertPointAtEnd(eb)
