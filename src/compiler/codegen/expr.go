@@ -383,6 +383,30 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 		return v
 	case *analyse.GetTypeBytes:
 		return llvm.SizeOf(self.codegenType(expr.Type))
+	case *analyse.String:
+		if v, ok := self.cstringPool[expr.Value]; ok {
+			return v
+		}
+		runes := []rune(expr.Value)
+		v := llvm.AddGlobal(self.module, llvm.ArrayType(self.ctx.Int32Type(), len(runes)), "")
+		v.SetLinkage(llvm.PrivateLinkage)
+		elems := make([]llvm.Value, len(runes)+1)
+		for i, r := range runes {
+			elems[i] = llvm.ConstInt(self.ctx.Int32Type(), uint64(r), true)
+		}
+		elems[len(elems)-1] = llvm.ConstInt(self.ctx.Int32Type(), 0, true)
+		v.SetInitializer(llvm.ConstArray(v.Type().ElementType(), elems))
+		self.cstringPool[expr.Value] = v
+		return v
+	case *analyse.CString:
+		if v, ok := self.cstringPool[expr.Value]; ok {
+			return v
+		}
+		v := llvm.AddGlobal(self.module, llvm.ArrayType(self.ctx.Int8Type(), len(expr.Value)), "")
+		v.SetLinkage(llvm.PrivateLinkage)
+		v.SetInitializer(llvm.ConstString(expr.Value, true))
+		self.cstringPool[expr.Value] = v
+		return v
 	default:
 		panic("")
 	}

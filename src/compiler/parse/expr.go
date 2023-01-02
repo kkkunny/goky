@@ -122,10 +122,10 @@ func (self Char) Expr() {}
 // String 字符串
 type String struct {
 	Token lex.Token
-	Value []rune
+	Value string
 }
 
-func NewString(tok lex.Token, v []rune) *String {
+func NewString(tok lex.Token, v string) *String {
 	return &String{
 		Token: tok,
 		Value: v,
@@ -143,10 +143,10 @@ func (self String) Expr() {}
 // CString 字符串
 type CString struct {
 	Token lex.Token
-	Value []byte
+	Value string
 }
 
-func NewCString(tok lex.Token, v []byte) *CString {
+func NewCString(tok lex.Token, v string) *CString {
 	return &CString{
 		Token: tok,
 		Value: v,
@@ -438,8 +438,7 @@ func (self *Parser) parsePrimaryExpr() Expr {
 		return self.parseStringExpr()
 	case lex.CSTRING:
 		self.next()
-		bytes := []byte(self.curTok.Source[2 : len(self.curTok.Source)-1])
-		return NewCString(self.curTok, append(bytes, 0))
+		return NewCString(self.curTok, self.curTok.Source[2:len(self.curTok.Source)-1])
 	case lex.NULL:
 		self.next()
 		return NewNull(self.curTok)
@@ -497,8 +496,7 @@ func (self *Parser) parseIntExpr() *Int {
 // 字符串
 func (self *Parser) parseStringExpr() *String {
 	tok := self.expectNextIs(lex.STRING)
-	runes := []rune(tok.Source[1 : len(tok.Source)-1])
-	return NewString(tok, runes)
+	return NewString(tok, tok.Source[1:len(tok.Source)-1])
 }
 
 // 一元表达式前缀
@@ -588,11 +586,7 @@ func (self *Parser) parseBinaryExpr(prior uint8) Expr {
 		}
 		self.next()
 		right := self.parseBinaryExpr(nextOpera.Kind.Priority())
-		left = &Binary{
-			Opera: nextOpera,
-			Left:  left,
-			Right: right,
-		}
+		left = NewBinary(nextOpera, left, right)
 	}
 
 	return left

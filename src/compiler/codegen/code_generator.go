@@ -20,17 +20,23 @@ type CodeGenerator struct {
 	cb, eb llvm.BasicBlock
 	// defer
 	defers []deferInfo
+	// string
+	stringPool map[string]llvm.Value
+	// cstring
+	cstringPool map[string]llvm.Value
 }
 
 // NewCodeGenerator 新建代码生成器
 func NewCodeGenerator() *CodeGenerator {
 	ctx := llvm.NewContext()
 	cg := &CodeGenerator{
-		ctx:     ctx,
-		module:  ctx.NewModule(""),
-		builder: ctx.NewBuilder(),
-		vars:    make(map[analyse.Expr]llvm.Value),
-		types:   make(map[string]llvm.Type),
+		ctx:         ctx,
+		module:      ctx.NewModule(""),
+		builder:     ctx.NewBuilder(),
+		vars:        make(map[analyse.Expr]llvm.Value),
+		types:       make(map[string]llvm.Type),
+		stringPool:  make(map[string]llvm.Value),
+		cstringPool: make(map[string]llvm.Value),
 	}
 	cg.init()
 	return cg

@@ -9,11 +9,8 @@ func fib(n: i32)i32{
 
 @extern(main)
 func main()u8{
-    let fileStr = c"fib.k"
-    let funcStr = c"main"
-    let str = c"fib(5) != 5"
     if fib(5) != 5{
-        c::__assert_fail(&str as *c::char, &fileStr as *c::char, 16, &funcStr as *c::char)
+        c::__assert_fail(c"fib(5) != 5", c"fib.k", 13, c"main")
     }
     return 0
 }

@@ -93,6 +93,54 @@ func (self Boolean) IsConst() bool {
 	return true
 }
 
+// String 字符串
+type String struct {
+	Type  Type
+	Value string
+}
+
+func (self String) stmt() {}
+
+func (self String) GetType() Type {
+	return self.Type
+}
+
+func (self String) GetMut() bool {
+	return false
+}
+
+func (self String) IsTemporary() bool {
+	return true
+}
+
+func (self String) IsConst() bool {
+	return true
+}
+
+// CString c语言风格字符串
+type CString struct {
+	Type  Type
+	Value string
+}
+
+func (self CString) stmt() {}
+
+func (self CString) GetType() Type {
+	return self.Type
+}
+
+func (self CString) GetMut() bool {
+	return false
+}
+
+func (self CString) IsTemporary() bool {
+	return true
+}
+
+func (self CString) IsConst() bool {
+	return true
+}
+
 // Null 空指针
 type Null struct {
 	Type Type
@@ -626,28 +674,20 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 			Value: int64(expr.Value),
 		}, nil
 	case *parse.String:
-		elems := make([]Expr, len(expr.Value))
-		for i, e := range expr.Value {
-			elems[i] = &Integer{
-				Type:  I32,
-				Value: int64(e),
-			}
+		if expect == nil || !GetDepthBaseType(expect).Equal(NewPtrType(I32)) {
+			expect = NewPtrType(I32)
 		}
-		return &Array{
-			Type:  NewArrayType(uint(len(elems)), I32),
-			Elems: elems,
+		return &String{
+			Type:  expect,
+			Value: expr.Value,
 		}, nil
 	case *parse.CString:
-		elems := make([]Expr, len(expr.Value))
-		for i, e := range expr.Value {
-			elems[i] = &Integer{
-				Type:  I8,
-				Value: int64(e),
-			}
+		if expect == nil || !GetDepthBaseType(expect).Equal(NewPtrType(I8)) {
+			expect = NewPtrType(I8)
 		}
-		return &Array{
-			Type:  NewArrayType(uint(len(elems)), I8),
-			Elems: elems,
+		return &CString{
+			Type:  expect,
+			Value: expr.Value,
 		}, nil
 	case *parse.Null:
 		if expect == nil || (!IsPtrTypeAndSon(expect) && !IsFuncTypeAndSon(expect)) {
@@ -1257,17 +1297,9 @@ func analyseBuildInFuncCall(ctx *blockContext, ident *parse.Ident, paramAsts []p
 		if err != nil {
 			return nil, err
 		}
-		typename := []rune(param.GetType().String())
-		elems := make([]Expr, len(typename))
-		for i, e := range typename {
-			elems[i] = &Integer{
-				Type:  I32,
-				Value: int64(e),
-			}
-		}
-		return &Array{
-			Type:  NewArrayType(uint(len(elems)), I32),
-			Elems: elems,
+		return &String{
+			Type:  NewPtrType(I32),
+			Value: param.GetType().String(),
 		}, nil
 	case "size":
 		if len(paramAsts) != 1 {
