@@ -1,9 +1,11 @@
+import std.io
+import std.container.string
 import std.c
 
 @extern(main)
 func main()u8{
-    if c::puts(c"hello world") != 12{
-        c::__assert_fail(c"c::puts(c\"hello world\") != 12", c"hello_world.k", 6, c"main")
-    }
+    c::setlocale(c::LC_ALL, c"")
+    let s = string::new("Hello World\n")
+    io::print(s)
     return 0
 }

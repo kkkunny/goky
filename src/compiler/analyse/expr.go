@@ -1281,14 +1281,15 @@ func analyseBuildInFuncCall(ctx *blockContext, ident *parse.Ident, paramAsts []p
 		if err != nil {
 			return nil, err
 		}
-		array, ok := GetBaseType(param.GetType()).(*TypeArray)
-		if !ok {
-			return nil, utils.Errorf(paramAsts[0].Position(), "expect a array")
+		pt := param.GetType()
+		array, ok := GetBaseType(pt).(*TypeArray)
+		if ok {
+			return &Integer{
+				Type:  Usize,
+				Value: int64(array.Size),
+			}, nil
 		}
-		return &Integer{
-			Type:  Usize,
-			Value: int64(array.Size),
-		}, nil
+		return nil, utils.Errorf(paramAsts[0].Position(), "expect a array")
 	case "typename":
 		if len(paramAsts) != 1 {
 			return nil, utils.Errorf(ident.Position(), "expect 1 arguments")
