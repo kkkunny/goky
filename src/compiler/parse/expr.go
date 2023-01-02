@@ -1,6 +1,7 @@
 package parse
 
 import (
+	"fmt"
 	"github.com/kkkunny/klang/src/compiler/lex"
 	"github.com/kkkunny/klang/src/compiler/utils"
 	"strconv"
@@ -478,6 +479,7 @@ func (self *Parser) parsePrimaryExpr() Expr {
 		end := self.expectNextIs(lex.RBR).Pos
 		return NewStruct(utils.MixPosition(begin, end), fields...)
 	default:
+		fmt.Printf("%+v\n", self.nextTok)
 		self.throwErrorf(self.nextTok.Pos, "unknown expression")
 		return nil
 	}

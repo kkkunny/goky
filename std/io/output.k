@@ -8,3 +8,12 @@ pub func print(s: string::String){
         index += 1
     }
 }
+
+pub func println(s: string::String){
+    let index: usize
+    for index < s.len{
+        c::putwchar(s.data[index] as c::wchar_t)
+        index += 1
+    }
+    c::putwchar('\n')
+}

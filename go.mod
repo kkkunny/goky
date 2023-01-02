@@ -1,6 +1,6 @@
 module github.com/kkkunny/klang
 
-go 1.19
+go 1.18
 
 require (
 	github.com/kkkunny/go-llvm v0.0.0-20221229055450-29837b9418ac

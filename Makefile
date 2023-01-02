@@ -1,49 +1,52 @@
-test=tests/exit.k
+WORK_PATH = $(shell pwd)
+TEST_DIR = $(WORK_PATH)/tests
+TEST_FILE = $(TEST_DIR)/hello_world.k
+KCC_FILE = $(GOPATH)/bin/kcc
 
 .PHONY: lex
-lex: lex.go $(test)
+lex: lex.go $(TEST_FILE)
 	@go build -tags test,lex -o .test .
-	-@./.test $(test) || true
+	-@./.test $(TEST_FILE) || true
 	@rm .test
 
 .PHONY: parse
-parse: parse.go $(test)
+parse: parse.go $(TEST_FILE)
 	@go build -tags test,parse -o .test .
-	-@./.test $(test) || true
+	-@./.test $(TEST_FILE) || true
 	@rm .test
 
 .PHONY: analyse
-analyse: analyse.go $(test)
+analyse: analyse.go $(TEST_FILE)
 	@go build -tags test,analyse -o .test .
-	-@./.test $(test) || true
+	-@./.test $(TEST_FILE) || true
 	@rm .test
 
 .PHONY: codegen
-codegen: codegen.go $(test)
+codegen: codegen.go $(TEST_FILE)
 	@go build -tags test,codegen,llvm14 -o .test .
-	-@./.test $(test) || true
+	-@./.test $(TEST_FILE) || true
 	@rm .test
 
 .PHONY: optimize
-optimize: optimize.go $(test)
+optimize: optimize.go $(TEST_FILE)
 	@go build -tags test,optimize,llvm14 -o .test .
-	-@./.test $(test) || true
+	-@./.test $(TEST_FILE) || true
 	@rm .test
 
 .PHONY: build
 build: clean main.go
 	go build -tags llvm14 -o kcc main.go
-	ln -s /mnt/code/go/src/github.com/kkkunny/klang/kcc /mnt/code/go/bin/kcc
+	ln -s $(WORK_PATH)/kcc $(KCC_FILE)
 
 .PHONY: clean
 clean:
-	rm -f /mnt/code/go/bin/kcc
-	rm -f /mnt/code/go/src/github.com/kkkunny/klang/kcc
+	rm -f $(WORK_PATH)/kcc
+	rm -f $(KCC_FILE)
 
 .PHONY: test
 test: build
-	@for file in $(foreach dir, tests, $(wildcard tests/*.k)); do \
-		echo kcc run tests/hello_world.k > /dev/null; \
+	@for file in $(foreach dir, $(TEST_DIR), $(wildcard $(TEST_DIR)/*.k)); do \
+		echo kcc run $$file > /dev/null; \
 		echo -e "\e[32m 测试成功 $$file \e[0m"; \
     done; \
     make clean

@@ -669,8 +669,11 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 			Value: expr.Value,
 		}, nil
 	case *parse.Char:
+		if expect == nil || !IsNumberTypeAndSon(expect) {
+			expect = I32
+		}
 		return &Integer{
-			Type:  I32,
+			Type:  expect,
 			Value: int64(expr.Value),
 		}, nil
 	case *parse.String:

@@ -172,7 +172,8 @@ func (self *Lexer) scanChar() Token {
 		lastRune = ch
 	}
 	s := buf.String()
-	runes := []rune(s)
+	ss := utils.ParseEscapeCharacter(s, `\'`, `'`)
+	runes := []rune(ss)
 
 	if len(runes) != 3 || runes[0] != '\'' || runes[2] != '\'' {
 		return Token{
@@ -182,11 +183,10 @@ func (self *Lexer) scanChar() Token {
 		}
 	}
 
-	s = utils.ParseEscapeCharacter(s, `\'`, `'`)
 	return Token{
 		Pos:    pos,
 		Kind:   CHAR,
-		Source: s,
+		Source: ss,
 	}
 }
 
