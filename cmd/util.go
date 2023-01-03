@@ -49,11 +49,11 @@ func RandomString(n uint8) string {
 	return buf.String()
 }
 
-// 输出汇编
-func outputAsm(config *buildConfig, from, to stlos.Path) (stlos.Path, error) {
+// 输出llvm ir
+func outputLLVM(config *buildConfig, from, to stlos.Path, output bool) (llvm.Module, llvm.TargetMachine, error) {
 	if to == "" {
 		for {
-			to = stlos.Path(os.TempDir()).Join(stlos.Path(RandomString(6) + ".s"))
+			to = stlos.Path(os.TempDir()).Join(stlos.Path(RandomString(6) + ".ll"))
 			if !to.IsExist() {
 				break
 			}
@@ -68,11 +68,11 @@ func outputAsm(config *buildConfig, from, to stlos.Path) (stlos.Path, error) {
 		ast, err = parse.ParseFile(from)
 	}
 	if err != nil {
-		return "", err
+		return llvm.Module{}, llvm.TargetMachine{}, err
 	}
 	mean, err := analyse.AnalyseMain(ast)
 	if err != nil {
-		return "", err
+		return llvm.Module{}, llvm.TargetMachine{}, err
 	}
 	module := codegen.Optimize(
 		codegen.NewCodeGenerator().Codegen(*mean),
@@ -81,19 +81,22 @@ func outputAsm(config *buildConfig, from, to stlos.Path) (stlos.Path, error) {
 	)
 
 	if err = llvm.InitializeNativeTarget(); err != nil {
-		return "", err
+		return llvm.Module{}, llvm.TargetMachine{}, err
 	}
 	if err = llvm.InitializeNativeAsmPrinter(); err != nil {
-		return "", err
+		return llvm.Module{}, llvm.TargetMachine{}, err
 	}
 	module.SetTarget(llvm.DefaultTargetTriple())
 	target, err := llvm.GetTargetFromTriple(module.Target())
 	if err != nil {
-		return "", err
+		return llvm.Module{}, llvm.TargetMachine{}, err
 	}
 	tm := target.CreateTargetMachine(module.Target(), "generic", "", llvm.CodeGenLevelNone, llvm.RelocPIC, llvm.CodeModelDefault)
-	if err = tm.EmitToFile(module, to.String(), llvm.AssemblyFile); err != nil {
-		return "", err
+	module.SetDataLayout(tm.CreateTargetData().String())
+	if output {
+		if err = os.WriteFile(to.String(), []byte(module.String()), 0666); err != nil {
+			return llvm.Module{}, llvm.TargetMachine{}, err
+		}
 	}
 
 	for l := range mean.Links {
@@ -101,6 +104,23 @@ func outputAsm(config *buildConfig, from, to stlos.Path) (stlos.Path, error) {
 	}
 	for l := range mean.Libs {
 		config.Libraries = append(config.Libraries, l)
+	}
+	return module, tm, nil
+}
+
+// 输出汇编
+func outputAsm(module llvm.Module, targetMachine llvm.TargetMachine, to stlos.Path) (stlos.Path, error) {
+	if to == "" {
+		for {
+			to = stlos.Path(os.TempDir()).Join(stlos.Path(RandomString(6) + ".s"))
+			if !to.IsExist() {
+				break
+			}
+		}
+	}
+
+	if err := targetMachine.EmitToFile(module, to.String(), llvm.AssemblyFile); err != nil {
+		return "", err
 	}
 	return to, nil
 }

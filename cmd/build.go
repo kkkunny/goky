@@ -13,6 +13,7 @@ type buildConfig struct {
 	Target       stlos.Path   // 目标地址
 	Release      bool         // release模式
 	Output       stlos.Path   // 输出地址
+	LLVM         bool         // 输出llvm ir
 	Asm          bool         // 输出汇编
 	Shared       bool         // 输出共享库
 	Object       bool         // 输出对象文件
@@ -51,6 +52,7 @@ func BuildCmd() *cobra.Command {
 	// output path
 	cmd.Flags().StringVarP((*string)(&conf.Output), "output", "o", "", "output path")
 	// output type
+	cmd.Flags().BoolVar(&conf.LLVM, "llvm", false, "output llvm ir file")
 	cmd.Flags().BoolVar(&conf.Asm, "asm", false, "output asm file")
 	cmd.Flags().BoolVar(&conf.Shared, "shared", false, "output shared library file")
 	cmd.Flags().BoolVar(&conf.Object, "object", false, "output object file")
@@ -67,6 +69,8 @@ func build(conf buildConfig) error {
 	if conf.Output == "" {
 		if !conf.Target.IsDir() {
 			switch {
+			case conf.LLVM:
+				conf.Output = conf.Target.WithExtension("ll")
 			case conf.Asm:
 				conf.Output = conf.Target.WithExtension("s")
 			case conf.Shared:
@@ -78,6 +82,8 @@ func build(conf buildConfig) error {
 			}
 		} else {
 			switch {
+			case conf.LLVM:
+				conf.Output = conf.Target.Join(conf.Target.GetBase().WithExtension("ll"))
 			case conf.Asm:
 				conf.Output = conf.Target.Join(conf.Target.GetBase().WithExtension("s"))
 			case conf.Shared:
@@ -90,15 +96,24 @@ func build(conf buildConfig) error {
 		}
 	}
 
+	// llvm ir
+	if conf.LLVM {
+		_, _, err := outputLLVM(&conf, conf.Target, conf.Output, true)
+		return err
+	}
+	module, targetMachine, err := outputLLVM(&conf, conf.Target, "", false)
+	if err != nil {
+		return err
+	}
+
 	// 汇编
 	var asmPath stlos.Path
-	var err error
 	if conf.Asm {
 		asmPath = conf.Output
-		_, err = outputAsm(&conf, conf.Target, conf.Output)
+		_, err = outputAsm(module, targetMachine, conf.Output)
 		return err
 	} else {
-		asmPath, err = outputAsm(&conf, conf.Target, "")
+		asmPath, err = outputAsm(module, targetMachine, "")
 		if err != nil {
 			return err
 		}
