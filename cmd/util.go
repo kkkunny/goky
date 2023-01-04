@@ -49,17 +49,8 @@ func RandomString(n uint8) string {
 	return buf.String()
 }
 
-// 输出llvm ir
-func outputLLVM(config *buildConfig, from, to stlos.Path, output bool) (llvm.Module, llvm.TargetMachine, error) {
-	if to == "" {
-		for {
-			to = stlos.Path(os.TempDir()).Join(stlos.Path(RandomString(6) + ".ll"))
-			if !to.IsExist() {
-				break
-			}
-		}
-	}
-
+// 输出llvm
+func outputLLVM(config *buildConfig, from stlos.Path) (llvm.Module, llvm.TargetMachine, error) {
 	var ast *parse.Package
 	var err error
 	if from.IsDir() {
@@ -93,11 +84,6 @@ func outputLLVM(config *buildConfig, from, to stlos.Path, output bool) (llvm.Mod
 	}
 	tm := target.CreateTargetMachine(module.Target(), "generic", "", llvm.CodeGenLevelNone, llvm.RelocPIC, llvm.CodeModelDefault)
 	module.SetDataLayout(tm.CreateTargetData().String())
-	if output {
-		if err = os.WriteFile(to.String(), []byte(module.String()), 0666); err != nil {
-			return llvm.Module{}, llvm.TargetMachine{}, err
-		}
-	}
 
 	for l := range mean.Links {
 		config.Linkages = append(config.Linkages, l)
