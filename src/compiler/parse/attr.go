@@ -66,21 +66,6 @@ func (self AttrNoReturn) Position() utils.Position {
 
 func (self AttrNoReturn) Attr() {}
 
-// AttrExit @exit
-type AttrExit struct {
-	Pos utils.Position
-}
-
-func NewAttrExit(pos utils.Position) *AttrExit {
-	return &AttrExit{Pos: pos}
-}
-
-func (self AttrExit) Position() utils.Position {
-	return self.Pos
-}
-
-func (self AttrExit) Attr() {}
-
 // AttrInline @inline
 type AttrInline struct {
 	Pos   utils.Position
@@ -133,8 +118,6 @@ func (self *Parser) parseAttr() Attr {
 		return NewAttrLink(utils.MixPosition(attrName.Pos, end), asms, libs)
 	case "@noreturn":
 		return NewAttrNoReturn(attrName.Pos)
-	case "@exit":
-		return NewAttrExit(attrName.Pos)
 	case "@inline":
 		self.expectNextIs(lex.LPA)
 		var v lex.Token

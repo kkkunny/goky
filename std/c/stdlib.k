@@ -42,7 +42,6 @@ pub func malloc(size: size_t)voidptr
 pub func realloc(ptr: voidptr, size: size_t)voidptr
 
 @extern(abort)
-@exit
 @noreturn
 pub func abort()
 
@@ -50,7 +49,6 @@ pub func abort()
 pub func atexit(fun: func())int
 
 @extern(exit)
-@exit
 @noreturn
 pub func exit(status: int)
 

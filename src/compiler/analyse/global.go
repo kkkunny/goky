@@ -17,7 +17,6 @@ type Function struct {
 	// 属性
 	ExternName string // 外部名
 	NoReturn   bool   // 函数是否不返回
-	Exit       bool   // 函数是否会导致程序退出
 	Inline     *bool  // 函数是否强制内联或者强制不内联
 
 	Ret    Type
@@ -132,9 +131,6 @@ func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, u
 				ctx.f.Libs[string(lib.Value)] = struct{}{}
 			}
 		case *parse.AttrNoReturn:
-			f.NoReturn = true
-		case *parse.AttrExit:
-			f.Exit = true
 			f.NoReturn = true
 		case *parse.AttrInline:
 			var v bool
@@ -310,9 +306,6 @@ func analyseMethodDecl(ctx *packageContext, ast *parse.Method) (*Function, utils
 	for _, astAttr := range ast.Attrs {
 		switch attr := astAttr.(type) {
 		case *parse.AttrNoReturn:
-			f.NoReturn = true
-		case *parse.AttrExit:
-			f.Exit = true
 			f.NoReturn = true
 		case *parse.AttrInline:
 			var v bool

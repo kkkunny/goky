@@ -125,14 +125,9 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 		for i, a := range expr.Args {
 			args[i] = self.codegenExpr(a, true)
 		}
-		if meanFunc, ok := expr.Func.(*analyse.Function); ok {
-			if meanFunc.Exit {
-				self.doneBeforeFuncEnd()
-			}
-		}
 		call := self.builder.CreateCall(f.Type().ReturnType(), f, args, "")
 		if meanFunc, ok := expr.Func.(*analyse.Function); ok {
-			if meanFunc.NoReturn || meanFunc.Exit {
+			if meanFunc.NoReturn {
 				self.doneBeforeFuncEnd()
 			}
 		}
@@ -152,11 +147,8 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 		for i, a := range expr.Args {
 			args[i+1] = self.codegenExpr(a, true)
 		}
-		if expr.Method.Func.Exit {
-			self.doneBeforeFuncEnd()
-		}
 		call := self.builder.CreateCall(f.Type().ReturnType(), f, args, "")
-		if expr.Method.Func.NoReturn || expr.Method.Func.Exit {
+		if expr.Method.Func.NoReturn {
 			self.builder.CreateUnreachable()
 		}
 		return call

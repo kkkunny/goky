@@ -235,7 +235,7 @@ func (self *Parser) parseTypeDef(pub *lex.Token) *TypeDef {
 func (self *Parser) parseFunction(pub *lex.Token, attrs []Attr) Global {
 	for _, attr := range attrs {
 		switch attr.(type) {
-		case *AttrExtern, *AttrLink, *AttrNoReturn, *AttrExit, *AttrInline:
+		case *AttrExtern, *AttrLink, *AttrNoReturn, *AttrInline:
 		default:
 			self.throwErrorf(attr.Position(), errStrCanNotUseAttr)
 			return nil
@@ -273,7 +273,7 @@ func (self *Parser) parseFunction(pub *lex.Token, attrs []Attr) Global {
 func (self *Parser) parseMethod(begin utils.Position, pub bool, attrs []Attr) *Method {
 	for _, attr := range attrs {
 		switch attr.(type) {
-		case *AttrNoReturn, *AttrExit, *AttrInline:
+		case *AttrNoReturn, *AttrInline:
 		default:
 			self.throwErrorf(attr.Position(), errStrCanNotUseAttr)
 			return nil

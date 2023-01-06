@@ -1077,7 +1077,6 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 		}
 		return nil, utils.Errorf(expr.Front.Position(), "expect a struct")
 	case *parse.Index:
-		// TODO expect
 		prefix, err := analyseExpr(ctx, nil, expr.Front)
 		if err != nil {
 			return nil, err

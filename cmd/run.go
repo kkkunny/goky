@@ -18,7 +18,7 @@ func RunCmd() *cobra.Command {
 			if err := cobra.ExactArgs(1)(cmd, args); err != nil {
 				return err
 			}
-			// conf.Backend = "asm"
+			conf.End = "exe"
 			target := stlos.Path(args[0])
 			if !target.IsExist() {
 				return errors.New("expect a k source file path")
