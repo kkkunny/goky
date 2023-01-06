@@ -50,3 +50,7 @@ test: build
 		echo -e "\e[32m 测试成功 $$file \e[0m"; \
     done; \
     make clean
+
+.PHONY: docker
+docker:
+	docker build -t klang:latest .

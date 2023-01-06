@@ -51,6 +51,13 @@ Klang是一门简洁的、强类型的编译型语言
 > make build
 ```
 
+### Docker
+
+```shell
+> make docker
+> docker run -it --name klang klang
+```
+
 ## Hello World
 
 tests/hello_world.k
