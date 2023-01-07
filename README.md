@@ -2,6 +2,14 @@
 
 Klang是一门简洁的、强类型的编译型语言
 
+## Snake
+
+```shell
+> kcc run examples/snake.k
+```
+
+<div><img src=./examples/snake.gif width=30%/></div>
+
 ## Features：
 
 + 语法简单

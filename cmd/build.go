@@ -10,9 +10,7 @@ import (
 )
 
 type buildConfig struct {
-	// Backend      string       // 后端类型
 	Target       stlos.Path   // 目标地址
-	Release      bool         // release模式
 	Output       stlos.Path   // 输出地址
 	End          string       // 输出文件类型
 	Linkages     []stlos.Path // 链接
@@ -45,8 +43,6 @@ func BuildCmd() *cobra.Command {
 			return nil
 		},
 	}
-	// model
-	cmd.Flags().BoolVarP(&conf.Release, "release", "r", false, "with release model")
 	// output path
 	cmd.Flags().StringVarP((*string)(&conf.Output), "output", "o", "", "output path")
 	// output file type

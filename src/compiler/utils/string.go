@@ -12,6 +12,7 @@ var escapeCharacters = map[string]rune{
 	`\v`: 11,
 	`\f`: 12,
 	`\r`: 13,
+	`\e`: 27,
 	`\\`: 92,
 }
 

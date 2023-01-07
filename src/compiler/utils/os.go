@@ -4,6 +4,7 @@ import (
 	stlos "github.com/kkkunny/stl/os"
 	"golang.org/x/exp/constraints"
 	"os"
+	"path/filepath"
 	"unsafe"
 )
 
@@ -20,6 +21,9 @@ func AlignTo[T constraints.Integer | constraints.Float](n, align T) T {
 
 // GetRootPath 获取语言根目录
 func GetRootPath() (stlos.Path, error) {
-	path, err := os.Getwd()
-	return stlos.Path(path), err
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	return stlos.Path(filepath.Dir(exe)), err
 }

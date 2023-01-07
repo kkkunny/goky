@@ -8,7 +8,6 @@ import (
 	"github.com/kkkunny/klang/src/compiler/codegen"
 	"github.com/kkkunny/klang/src/compiler/parse"
 	stlos "github.com/kkkunny/stl/os"
-	"github.com/kkkunny/stl/util"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -65,11 +64,7 @@ func outputLLVM(config *buildConfig, from stlos.Path) (llvm.Module, llvm.TargetM
 	if err != nil {
 		return llvm.Module{}, llvm.TargetMachine{}, err
 	}
-	module := codegen.Optimize(
-		codegen.NewCodeGenerator().Codegen(*mean),
-		util.Ternary(config.Release, llvm.OptLevelAggressive, llvm.OptLevelDefault),
-		util.Ternary(config.Release, llvm.SizeLevelZ, llvm.SizeLevelNone),
-	)
+	module := codegen.NewCodeGenerator().Codegen(*mean)
 
 	if err = llvm.InitializeNativeTarget(); err != nil {
 		return llvm.Module{}, llvm.TargetMachine{}, err

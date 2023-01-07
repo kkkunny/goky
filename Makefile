@@ -27,12 +27,6 @@ codegen: codegen.go $(TEST_FILE)
 	-@./.test $(TEST_FILE) || true
 	@rm .test
 
-.PHONY: optimize
-optimize: optimize.go $(TEST_FILE)
-	@go build -tags test,optimize,llvm14 -o .test .
-	-@./.test $(TEST_FILE) || true
-	@rm .test
-
 .PHONY: build
 build: clean main.go
 	go build -tags llvm14 -o kcc main.go

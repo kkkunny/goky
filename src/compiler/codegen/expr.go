@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/analyse"
 	stlutil "github.com/kkkunny/stl/util"
@@ -80,32 +81,32 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			}
 		case "&&":
 			nb, eb := llvm.AddBasicBlock(self.function, ""), llvm.AddBasicBlock(self.function, "")
-			self.builder.CreateCondBr(self.codegenExpr(expr.Left, true), nb, eb)
+			self.builder.CreateCondBr(self.builder.CreateIntCast(self.codegenExpr(expr.Left, true), self.ctx.Int1Type(), ""), nb, eb)
 			pb := self.builder.GetInsertBlock()
 
 			self.builder.SetInsertPointAtEnd(nb)
-			nv := self.codegenExpr(expr.Right, true)
+			nv := self.builder.CreateIntCast(self.codegenExpr(expr.Right, true), self.ctx.Int1Type(), "")
 			self.builder.CreateBr(eb)
 			nb = self.builder.GetInsertBlock()
 
 			self.builder.SetInsertPointAtEnd(eb)
 			phi := self.builder.CreatePHI(nv.Type(), "")
-			phi.AddIncoming([]llvm.Value{v_false, nv}, []llvm.BasicBlock{pb, nb})
-			return phi
+			phi.AddIncoming([]llvm.Value{llvm.ConstInt(self.ctx.Int1Type(), 0, true), nv}, []llvm.BasicBlock{pb, nb})
+			return self.builder.CreateIntCast(phi, t_bool, "")
 		case "||":
 			nb, eb := llvm.AddBasicBlock(self.function, ""), llvm.AddBasicBlock(self.function, "")
-			self.builder.CreateCondBr(self.codegenExpr(expr.Left, true), eb, nb)
+			self.builder.CreateCondBr(self.builder.CreateIntCast(self.codegenExpr(expr.Left, true), self.ctx.Int1Type(), ""), eb, nb)
 			pb := self.builder.GetInsertBlock()
 
 			self.builder.SetInsertPointAtEnd(nb)
-			nv := self.codegenExpr(expr.Right, true)
+			nv := self.builder.CreateIntCast(self.codegenExpr(expr.Right, true), self.ctx.Int1Type(), "")
 			self.builder.CreateBr(eb)
 			nb = self.builder.GetInsertBlock()
 
 			self.builder.SetInsertPointAtEnd(eb)
 			phi := self.builder.CreatePHI(nv.Type(), "")
-			phi.AddIncoming([]llvm.Value{v_true, nv}, []llvm.BasicBlock{pb, nb})
-			return phi
+			phi.AddIncoming([]llvm.Value{llvm.ConstInt(self.ctx.Int1Type(), 1, true), nv}, []llvm.BasicBlock{pb, nb})
+			return self.builder.CreateIntCast(phi, t_bool, "")
 		default:
 			panic("")
 		}
@@ -176,53 +177,50 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			}, true)
 		}
 	case *analyse.Equal:
+		left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
+		var v llvm.Value
 		switch expr.Opera {
 		case "==":
-			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
-			return self.equal(left, right)
+			v = self.equal(left, right)
 		case "!=":
-			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
 			left = self.equal(left, right)
-			return self.builder.CreateXor(left, llvm.ConstInt(left.Type(), 1, true), "")
+			v = self.builder.CreateXor(left, llvm.ConstInt(left.Type(), 1, true), "")
 		case "<":
-			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
 			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntSLT, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntSLT, left, right, "")
 			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntULT, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntULT, left, right, "")
 			} else {
-				return self.builder.CreateFCmp(llvm.FloatOLT, left, right, "")
+				v = self.builder.CreateFCmp(llvm.FloatOLT, left, right, "")
 			}
 		case "<=":
-			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
 			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntSLE, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntSLE, left, right, "")
 			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntULE, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntULE, left, right, "")
 			} else {
-				return self.builder.CreateFCmp(llvm.FloatOLE, left, right, "")
+				v = self.builder.CreateFCmp(llvm.FloatOLE, left, right, "")
 			}
 		case ">":
-			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
 			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntSGT, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntSGT, left, right, "")
 			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntUGT, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntUGT, left, right, "")
 			} else {
-				return self.builder.CreateFCmp(llvm.FloatOGT, left, right, "")
+				v = self.builder.CreateFCmp(llvm.FloatOGT, left, right, "")
 			}
 		case ">=":
-			left, right := self.codegenExpr(expr.Left, true), self.codegenExpr(expr.Right, true)
 			if analyse.IsSintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntSGE, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntSGE, left, right, "")
 			} else if analyse.IsUintTypeAndSon(expr.Left.GetType()) {
-				return self.builder.CreateICmp(llvm.IntUGE, left, right, "")
+				v = self.builder.CreateICmp(llvm.IntUGE, left, right, "")
 			} else {
-				return self.builder.CreateFCmp(llvm.FloatOGE, left, right, "")
+				v = self.builder.CreateFCmp(llvm.FloatOGE, left, right, "")
 			}
 		default:
-			panic("")
+			panic(fmt.Sprintf("unknown equal: %+v", expr))
 		}
+		return self.builder.CreateIntCast(v, t_bool, "")
 	case *analyse.Unary:
 		switch expr.Opera {
 		case "!":
@@ -376,29 +374,42 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 	case *analyse.GetTypeBytes:
 		return llvm.SizeOf(self.codegenType(expr.Type))
 	case *analyse.String:
-		if v, ok := self.cstringPool[expr.Value]; ok {
-			return v
+		v, ok := self.cstringPool[expr.Value]
+		if !ok {
+			runes := []rune(expr.Value)
+			elems := make([]llvm.Value, len(runes)+1)
+			for i, r := range runes {
+				elems[i] = llvm.ConstInt(self.ctx.Int32Type(), uint64(r), true)
+			}
+			elems[len(elems)-1] = llvm.ConstInt(self.ctx.Int32Type(), 0, true)
+			init := llvm.ConstArray(v.Type().ElementType(), elems)
+
+			vv := llvm.AddGlobal(self.module, init.Type(), "")
+			vv.SetGlobalConstant(true)
+			vv.SetLinkage(llvm.PrivateLinkage)
+			vv.SetInitializer(init)
+			v = llvm.AddGlobal(self.module, self.codegenType(expr.GetType()), "")
+			v.SetGlobalConstant(true)
+			v.SetLinkage(llvm.PrivateLinkage)
+			v.SetInitializer(llvm.ConstPointerCast(vv, v.Type().ElementType()))
+			self.cstringPool[expr.Value] = v
 		}
-		runes := []rune(expr.Value)
-		v := llvm.AddGlobal(self.module, llvm.ArrayType(self.ctx.Int32Type(), len(runes)), "")
-		v.SetLinkage(llvm.PrivateLinkage)
-		elems := make([]llvm.Value, len(runes)+1)
-		for i, r := range runes {
-			elems[i] = llvm.ConstInt(self.ctx.Int32Type(), uint64(r), true)
-		}
-		elems[len(elems)-1] = llvm.ConstInt(self.ctx.Int32Type(), 0, true)
-		v.SetInitializer(llvm.ConstArray(v.Type().ElementType(), elems))
-		self.cstringPool[expr.Value] = v
-		return v
+		return self.builder.CreateLoad(v.Type().ElementType(), v, "")
 	case *analyse.CString:
-		if v, ok := self.cstringPool[expr.Value]; ok {
-			return v
+		v, ok := self.cstringPool[expr.Value]
+		if !ok {
+			init := llvm.ConstString(expr.Value, true)
+			vv := llvm.AddGlobal(self.module, init.Type(), "")
+			vv.SetGlobalConstant(true)
+			vv.SetLinkage(llvm.PrivateLinkage)
+			vv.SetInitializer(init)
+			v = llvm.AddGlobal(self.module, self.codegenType(expr.GetType()), "")
+			v.SetGlobalConstant(true)
+			v.SetLinkage(llvm.PrivateLinkage)
+			v.SetInitializer(llvm.ConstPointerCast(vv, v.Type().ElementType()))
+			self.cstringPool[expr.Value] = v
 		}
-		v := llvm.AddGlobal(self.module, llvm.ArrayType(self.ctx.Int8Type(), len(expr.Value)), "")
-		v.SetLinkage(llvm.PrivateLinkage)
-		v.SetInitializer(llvm.ConstString(expr.Value, true))
-		self.cstringPool[expr.Value] = v
-		return v
+		return self.builder.CreateLoad(v.Type().ElementType(), v, "")
 	default:
 		panic("")
 	}
@@ -494,7 +505,7 @@ func (self *CodeGenerator) equal(left, right llvm.Value) llvm.Value {
 				self.builder.SetInsertPointAtEnd(eb)
 			}
 		}
-		phi := self.builder.CreatePHI(t_bool, "")
+		phi := self.builder.CreatePHI(self.ctx.Int1Type(), "")
 		phi.AddIncoming(values, blocks)
 		return phi
 	default:

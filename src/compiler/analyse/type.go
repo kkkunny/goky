@@ -406,7 +406,7 @@ func GetDepthBaseType(t Type) Type {
 	case *Typedef:
 		return GetBaseType(typ.Dst)
 	default:
-		panic("")
+		panic(fmt.Sprintf("unknown type: %+v", t))
 	}
 }
 

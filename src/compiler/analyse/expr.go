@@ -830,6 +830,9 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 				},
 			}, nil
 		case lex.NOT:
+			if expect == nil || !GetBaseType(expect).Equal(Bool) {
+				expect = Bool
+			}
 			value, err := expectExprAndSon(ctx, expect, expr.Value)
 			if err != nil {
 				return nil, err
@@ -891,6 +894,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 				return nil, utils.Errorf(expr.Left.Position(), "expect a mutable value")
 			}
 			switch expr.Opera.Kind {
+			case lex.ASS:
 			case lex.ADS, lex.SUS, lex.MUS, lex.DIS, lex.MOS:
 				if !IsNumberTypeAndSon(lt) {
 					return nil, utils.Errorf(expr.Left.Position(), "expect a number")
@@ -1083,7 +1087,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 		}
 		switch pt := GetBaseType(prefix.GetType()).(type) {
 		case *TypeArray:
-			index, err := expectExprAndSon(ctx, Usize, expr.Index)
+			index, err := autoExpectExpr(ctx, Usize, expr.Index)
 			if err != nil {
 				return nil, err
 			}
@@ -1093,7 +1097,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 				Index: index,
 			}, nil
 		case *TypePtr:
-			index, err := expectExprAndSon(ctx, Usize, expr.Index)
+			index, err := autoExpectExpr(ctx, Usize, expr.Index)
 			if err != nil {
 				return nil, err
 			}
@@ -1128,22 +1132,11 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 		if err != nil {
 			return nil, err
 		}
-		ft := from.GetType()
-
-		switch {
-		case GetDepthBaseType(ft).Equal(GetDepthBaseType(to)):
-		case IsNumberTypeAndSon(ft) && IsNumberTypeAndSon(to):
-		case GetBaseType(ft).Equal(Usize) && (IsPtrTypeAndSon(to) || IsFuncTypeAndSon(to)):
-		case (IsPtrTypeAndSon(ft) || IsFuncTypeAndSon(ft)) && GetBaseType(to).Equal(Usize):
-		case (IsPtrTypeAndSon(ft) || IsFuncTypeAndSon(ft)) && (IsPtrTypeAndSon(to) || IsFuncTypeAndSon(to)):
-		default:
+		res := analyseCovert(from, to)
+		if res == nil {
 			return nil, utils.Errorf(expr.From.Position(), "can not covert to type `%s`", to)
 		}
-
-		return &Covert{
-			From: from,
-			To:   to,
-		}, nil
+		return res, nil
 	default:
 		panic("unknown expression")
 	}
@@ -1183,6 +1176,19 @@ func expectExprAndSon(ctx *blockContext, expect Type, ast parse.Expr) (Expr, uti
 		return nil, err
 	}
 	return expectExprWithTypeAndSon(ast.Position(), expect, expr)
+}
+
+// 自动转换成期待的类型
+func autoExpectExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Error) {
+	expr, err := analyseExpr(ctx, expect, ast)
+	if err != nil {
+		return nil, err
+	}
+	v := analyseCovert(expr, expect)
+	if v == nil {
+		return nil, utils.Errorf(ast.Position(), "expect type `%s` but there is `%s`", expect, expr.GetType())
+	}
+	return v, nil
 }
 
 // 获取类型默认值
@@ -1315,5 +1321,24 @@ func analyseBuildInFuncCall(ctx *blockContext, ident *parse.Ident, paramAsts []p
 		return &GetTypeBytes{Type: param.GetType()}, nil
 	default:
 		return nil, utils.Errorf(ident.Position(), "unknown identifier")
+	}
+}
+
+// 类型转换
+func analyseCovert(v Expr, t Type) *Covert {
+	ft := v.GetType()
+	switch {
+	case GetDepthBaseType(ft).Equal(GetDepthBaseType(t)):
+	case IsNumberTypeAndSon(ft) && IsNumberTypeAndSon(t):
+	case GetBaseType(ft).Equal(Usize) && (IsPtrTypeAndSon(t) || IsFuncTypeAndSon(t)):
+	case (IsPtrTypeAndSon(ft) || IsFuncTypeAndSon(ft)) && GetBaseType(t).Equal(Usize):
+	case (IsPtrTypeAndSon(ft) || IsFuncTypeAndSon(ft)) && (IsPtrTypeAndSon(t) || IsFuncTypeAndSon(t)):
+	default:
+		return nil
+	}
+
+	return &Covert{
+		From: v,
+		To:   t,
 	}
 }

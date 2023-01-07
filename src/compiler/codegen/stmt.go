@@ -65,7 +65,7 @@ func (self *CodeGenerator) codegenVariable(mean *analyse.Variable) {
 
 // 条件分支
 func (self *CodeGenerator) codegenIfElse(mean analyse.IfElse) {
-	cond := self.codegenExpr(mean.Cond, true)
+	cond := self.builder.CreateIntCast(self.codegenExpr(mean.Cond, true), self.ctx.Int1Type(), "")
 	tb := llvm.AddBasicBlock(self.function, "")
 	if mean.False == nil {
 		eb := llvm.AddBasicBlock(self.function, "")
@@ -102,7 +102,7 @@ func (self *CodeGenerator) codegenLoop(mean analyse.Loop) {
 
 	self.builder.SetInsertPointAtEnd(cb)
 	lb, eb := llvm.AddBasicBlock(self.function, ""), llvm.AddBasicBlock(self.function, "")
-	self.builder.CreateCondBr(self.codegenExpr(mean.Cond, true), lb, eb)
+	self.builder.CreateCondBr(self.builder.CreateIntCast(self.codegenExpr(mean.Cond, true), self.ctx.Int1Type(), ""), lb, eb)
 
 	cbBk, ebBk := self.cb, self.eb
 	self.cb, self.eb = cb, eb

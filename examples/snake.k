@@ -1,0 +1,183 @@
+// copy from https://github.com/serene-dev/snake-c
+
+import std.c
+
+type termios struct{
+	c_iflag: c::int
+	c_oflag: c::int
+	c_cflag: c::int
+	c_lflag: c::int
+	c_line: c::int
+	c_cc: [32]c::int
+	c_ispeed: c::int
+	c_ospeed: c::int
+}
+
+type timeval struct{
+	tv_sec: c::long
+	tv_usec: c::long
+}
+
+type fd_set struct{
+	fds_bits: [16]c::long
+}
+
+@extern(printf)
+func printf(format: *c::char, c::int, c::int)c::int
+
+@extern(usleep)
+func usleep(useconds: c::unsigned_int)c::int
+
+@extern(tcgetattr)
+func tcgetattr(fd: c::int, termios_p: *termios)c::int
+
+@extern(tcsetattr)
+func tcsetattr(fd: c::int, optional_actions: c::int, termios_p: *termios)c::int
+
+@extern(select)
+func select(nfds: c::int, readfds: *fd_set, writefds: *fd_set, exceptfds: *fd_set, timeout: *timeval)c::int
+
+let SIZE: (i32, i32) = (60, 30)
+
+@extern(main)
+func main()u8{
+	printf(c"\e[?25l", 0, 0)
+
+	let oldt: termios
+	let newt: termios
+	tcgetattr(0, &oldt)
+	newt = oldt
+	newt.c_lflag &= -11
+	tcsetattr(0, 0, &newt)
+
+	let x: [1000]i32
+	let y: [1000]i32
+	let quit: bool
+	for !quit{
+		printf(c"┌", 0, 0)
+		let i: i32 = 0
+		for i < SIZE[0]{
+			printf(c"─", 0, 0)
+			i += 1
+		}
+		printf(c"┐\n", 0, 0)
+
+		i = 0
+		for i < SIZE[1]{
+			printf(c"│", 0, 0)
+			let j: i32 = 0
+			for j < SIZE[0]{
+				printf(c"·", 0, 0)
+				j += 1
+			}
+			printf(c"│\n", 0, 0)
+			i += 1
+		}
+
+		printf(c"└", 0, 0)
+		i = 0
+		for i < SIZE[0]{
+			printf(c"─", 0, 0)
+			i += 1
+		}
+		printf(c"┘\n", 0, 0)
+
+		printf(c"\e[%iA", SIZE[1] as c::int + 2, 0)
+
+		let head: i32
+		let tail: i32
+		x[head] = SIZE[0] / 2
+		y[head] = SIZE[1] / 2
+		let gameover: bool
+		let xdir: i32 = 1
+		let ydir: i32
+		let applex: i32 = -1
+		let appley: i32
+
+		for !quit && !gameover{
+			if applex < 0{
+				applex = c::rand() as i32 % SIZE[0]
+				appley = c::rand() as i32 % SIZE[1]
+
+				i = tail
+				for i != head{
+					if x[i] == applex && y[i] == appley{
+						applex = -1
+					}
+					i = (i + 1) % 1000
+				}
+
+				if applex >= 0{
+					printf(c"\e[%iB\e[%iC❤", appley as c::int + 1, applex as c::int + 1)
+					printf(c"\e[%iF", appley as c::int + 1, 0)
+				}
+			}
+
+			printf(c"\e[%iB\e[%iC·", y[tail] as c::int + 1, x[tail] as c::int + 1)
+			printf(c"\e[%iF", y[tail] as c::int + 1, 0)
+
+			if x[head] == applex && y[head] == appley{
+				applex = -1
+				printf(c"\a", 0, 0)
+			}else{
+				tail = (tail + 1) % 1000
+			}
+
+			let newhead: i32 = (head + 1) % 1000
+			x[newhead] = (x[head] + xdir + SIZE[0]) % SIZE[0]
+			y[newhead] = (y[head] + ydir + SIZE[1]) % SIZE[1]
+			head = newhead
+
+			i = tail
+			for i != head{
+				if x[i] == x[head] && y[i] == y[head]{
+					gameover = true
+				}
+				i = (i + 1) % 1000
+			}
+
+			printf(c"\e[%iB\e[%iC▓", y[head] as c::int + 1, x[head] as c::int + 1)
+			printf(c"\e[%iF", y[head] as c::int + 1, 0)
+			c::fflush(c::stdout)
+
+			usleep(5 as c::unsigned_int * 1000000 / 60)
+
+			let tv: timeval
+			let fds: fd_set
+			tv.tv_sec = 0
+			tv.tv_usec = 0
+
+			fds.fds_bits[0] |= 1
+			select(1, &fds, null, null, &tv)
+			if (fds.fds_bits[0] & 1) != 0{
+				let ch = c::getchar()
+				if ch == 27 || ch == 'q'{
+					quit = true
+				} else if ch == 'a' && xdir != 1{
+					xdir = - 1
+					ydir = 0
+				} else if ch == 'd' && xdir != -1{
+					xdir = 1
+					ydir = 0
+				} else if ch == 's' && ydir != -1{
+					xdir = 0
+					ydir = 1
+				} else if ch == 'w' && ydir != 1{
+					xdir = 0
+					ydir = -1
+				}
+			}
+		}
+
+		if !quit{
+			printf(c"\e[%iB\e[%iC Game Over! ", SIZE[1] as c::int / 2, SIZE[0] as c::int / 2 - 5)
+			printf(c"\e[%iF", SIZE[1] as c::int / 2, 0)
+			c::fflush(c::stdout)
+			c::getchar()
+		}
+	}
+
+	printf(c"\e[?25h", 0, 0)
+	tcsetattr(0, 0, &oldt)
+	return 0
+}

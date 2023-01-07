@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/kkkunny/go-llvm"
 	"github.com/kkkunny/klang/src/compiler/analyse"
 	"github.com/kkkunny/klang/src/compiler/codegen"
 	"github.com/kkkunny/klang/src/compiler/parse"
@@ -22,5 +23,6 @@ func main() {
 	}
 	mean := util.MustValue(analyse.AnalyseMain(ast))
 	module := codegen.NewCodeGenerator().Codegen(*mean)
+	util.Must(llvm.VerifyModule(module, llvm.ReturnStatusAction))
 	fmt.Println(module)
 }

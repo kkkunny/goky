@@ -459,7 +459,7 @@ func (self *Parser) parsePrimaryExpr() Expr {
 			elems = self.parseExprListAtLeastOne(lex.COM)
 		}
 		end := self.expectNextIs(lex.RPA).Pos
-		return NewArray(utils.MixPosition(begin, end), elems...)
+		return NewTuple(utils.MixPosition(begin, end), elems...)
 	case lex.LBA:
 		self.next()
 		begin := self.curTok.Pos
@@ -468,7 +468,7 @@ func (self *Parser) parsePrimaryExpr() Expr {
 			elems = self.parseExprListAtLeastOne(lex.COM)
 		}
 		end := self.expectNextIs(lex.RBA).Pos
-		return NewTuple(utils.MixPosition(begin, end), elems...)
+		return NewArray(utils.MixPosition(begin, end), elems...)
 	case lex.LBR:
 		self.next()
 		begin := self.curTok.Pos
