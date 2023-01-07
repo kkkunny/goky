@@ -233,23 +233,6 @@ func (self *Parser) parseNameAndType(mid *lex.TokenKind) *NameAndType {
 	return NewNameAndType(name, typ)
 }
 
-// 名字和类型列表
-func (self *Parser) parseNameAndTypeList(mid *lex.TokenKind, sep lex.TokenKind, skipSem bool) (toks []*NameAndType) {
-	for {
-		if !self.nextIs(lex.IDENT) {
-			break
-		}
-		toks = append(toks, self.parseNameAndType(mid))
-		if !self.skipNextIs(sep) {
-			break
-		}
-		if skipSem {
-			self.skipSem()
-		}
-	}
-	return toks
-}
-
 // 名字（或空）和类型
 func (self *Parser) parseNameOrNilAndType(mid *lex.TokenKind) *NameOrNilAndType {
 	typ := self.parseType()

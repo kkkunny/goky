@@ -3,6 +3,7 @@ package parse
 import (
 	"github.com/kkkunny/klang/src/compiler/lex"
 	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/stl/types"
 )
 
 // Type 类型
@@ -117,10 +118,10 @@ func (self TypeTuple) Type() {}
 // TypeStruct 元组类型
 type TypeStruct struct {
 	Pos    utils.Position
-	Fields []*NameAndType
+	Fields []types.Pair[bool, *NameAndType]
 }
 
-func NewTypeStruct(pos utils.Position, field ...*NameAndType) *TypeStruct {
+func NewTypeStruct(pos utils.Position, field ...types.Pair[bool, *NameAndType]) *TypeStruct {
 	return &TypeStruct{
 		Pos:    pos,
 		Fields: field,
@@ -231,10 +232,13 @@ func (self *Parser) parseTypeTuple() Type {
 func (self *Parser) parseTypeStruct() Type {
 	begin := self.expectNextIs(lex.STRUCT).Pos
 	self.expectNextIs(lex.LBR)
-	self.skipSem()
 	mid := lex.COL
-	fields := self.parseNameAndTypeList(&mid, lex.SEM, true)
-	self.skipSem()
+	var fields []types.Pair[bool, *NameAndType]
+	for self.skipSem(); !self.nextIs(lex.RBR); self.skipSem() {
+		pub := self.skipNextIs(lex.PUB)
+		fields = append(fields, types.NewPair(pub, self.parseNameAndType(&mid)))
+		self.expectNextIs(lex.SEM)
+	}
 	end := self.expectNextIs(lex.RBR).Pos
 	return NewTypeStruct(utils.MixPosition(begin, end), fields...)
 }

@@ -546,7 +546,7 @@ type GetField struct {
 func (self GetField) stmt() {}
 
 func (self GetField) GetType() Type {
-	return GetBaseType(self.From.GetType()).(*TypeStruct).Fields.Get(self.Index)
+	return GetBaseType(self.From.GetType()).(*TypeStruct).Fields.Get(self.Index).Second
 }
 
 func (self GetField) GetMut() bool {
@@ -785,7 +785,7 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 		}
 		expects := make([]Type, len(expr.Fields))
 		for iter := GetBaseType(expect).(*TypeStruct).Fields.Begin(); iter.HasValue(); iter.Next() {
-			expects[iter.Index()] = iter.Value()
+			expects[iter.Index()] = iter.Value().Second
 		}
 		fields, err := analyseExprList(ctx, expects, expr.Fields)
 		if err != nil {
@@ -1057,6 +1057,8 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 		case *TypeStruct:
 			if !t.Fields.ContainKey(expr.End.Source) {
 				return nil, utils.Errorf(expr.End.Pos, "unknown identifier")
+			} else if td, ok := prefixType.(*Typedef); ok && ctx.GetPackageContext().path != td.Pkg && !t.Fields.Get(expr.End.Source).First {
+				return nil, utils.Errorf(expr.End.Pos, "unknown identifier")
 			}
 			return &GetField{
 				From:  prefix,
@@ -1068,6 +1070,8 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 				break
 			}
 			if !st.Fields.ContainKey(expr.End.Source) {
+				return nil, utils.Errorf(expr.End.Pos, "unknown identifier")
+			} else if td, ok := t.Elem.(*Typedef); ok && ctx.GetPackageContext().path != td.Pkg && !st.Fields.Get(expr.End.Source).First {
 				return nil, utils.Errorf(expr.End.Pos, "unknown identifier")
 			}
 			return &GetField{

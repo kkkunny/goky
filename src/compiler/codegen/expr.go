@@ -254,7 +254,7 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 			panic("")
 		}
 	case *analyse.Select:
-		cond := self.codegenExpr(expr.Cond, true)
+		cond := self.builder.CreateIntCast(self.codegenExpr(expr.Cond, true), self.ctx.Int1Type(), "")
 		tb, fb, eb := llvm.AddBasicBlock(self.function, ""), llvm.AddBasicBlock(self.function, ""), llvm.AddBasicBlock(self.function, "")
 		self.builder.CreateCondBr(cond, tb, fb)
 

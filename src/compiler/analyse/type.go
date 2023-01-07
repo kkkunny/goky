@@ -7,6 +7,7 @@ import (
 	stlos "github.com/kkkunny/stl/os"
 	"github.com/kkkunny/stl/set"
 	"github.com/kkkunny/stl/table"
+	"github.com/kkkunny/stl/types"
 	"strings"
 )
 
@@ -253,11 +254,11 @@ func (self TypeTuple) Equal(t Type) bool {
 
 // TypeStruct 结构体类型
 type TypeStruct struct {
-	Fields *table.LinkedHashMap[string, Type]
+	Fields *table.LinkedHashMap[string, types.Pair[bool, Type]]
 }
 
 // NewStructType 新建结构体类型
-func NewStructType(fields *table.LinkedHashMap[string, Type]) *TypeStruct {
+func NewStructType(fields *table.LinkedHashMap[string, types.Pair[bool, Type]]) *TypeStruct {
 	return &TypeStruct{Fields: fields}
 }
 
@@ -290,7 +291,7 @@ func (self TypeStruct) Equal(t Type) bool {
 		}
 		for iter := self.Fields.Begin(); iter.HasValue(); iter.Next() {
 			sk, sv := s.Fields.GetByIndex(iter.Index())
-			if iter.Key() != sk || !iter.Value().Equal(sv) {
+			if iter.Key() != sk || iter.Value().First != sv.First || !iter.Value().Second.Equal(sv.Second) {
 				return false
 			}
 		}
@@ -398,9 +399,9 @@ func GetDepthBaseType(t Type) Type {
 		}
 		return NewTupleType(elems...)
 	case *TypeStruct:
-		fields := table.NewLinkedHashMap[string, Type]()
+		fields := table.NewLinkedHashMap[string, types.Pair[bool, Type]]()
 		for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
-			fields.Set(iter.Key(), GetBaseType(iter.Value()))
+			fields.Set(iter.Key(), types.NewPair(iter.Value().First, GetBaseType(iter.Value().Second)))
 		}
 		return NewStructType(fields)
 	case *Typedef:
@@ -467,16 +468,16 @@ func analyseType(ctx *packageContext, ast parse.Type) (Type, utils.Error) {
 			return nil, utils.NewMultiError(errors...)
 		}
 	case *parse.TypeStruct:
-		fields := table.NewLinkedHashMap[string, Type]()
+		fields := table.NewLinkedHashMap[string, types.Pair[bool, Type]]()
 		var errors []utils.Error
 		for _, f := range typ.Fields {
-			ft, err := analyseType(ctx, f.Type)
+			ft, err := analyseType(ctx, f.Second.Type)
 			if err != nil {
 				errors = append(errors, err)
-			} else if fields.ContainKey(f.Name.Source) {
-				errors = append(errors, utils.Errorf(f.Name.Pos, "duplicate identifier"))
+			} else if fields.ContainKey(f.Second.Name.Source) {
+				errors = append(errors, utils.Errorf(f.Second.Name.Pos, "duplicate identifier"))
 			} else {
-				fields.Set(f.Name.Source, ft)
+				fields.Set(f.Second.Name.Source, types.NewPair(f.First, ft))
 			}
 		}
 		if len(errors) == 0 {
@@ -535,7 +536,7 @@ func checkTypeCircle(tmp *set.LinkedHashSet[*Typedef], t Type) bool {
 		return false
 	case *TypeStruct:
 		for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
-			if checkTypeCircle(tmp, iter.Value()) {
+			if checkTypeCircle(tmp, iter.Value().Second) {
 				return true
 			}
 		}

@@ -43,7 +43,7 @@ func (self *CodeGenerator) codegenType(mean analyse.Type) llvm.Type {
 		if typ.Fields.Length() <= 3 {
 			elems := make([]llvm.Type, typ.Fields.Length())
 			for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
-				elems[iter.Index()] = self.codegenType(iter.Value())
+				elems[iter.Index()] = self.codegenType(iter.Value().Second)
 			}
 			return self.ctx.StructType(elems, false)
 		} else {
@@ -54,7 +54,7 @@ func (self *CodeGenerator) codegenType(mean analyse.Type) llvm.Type {
 			td := self.ctx.StructCreateNamed("")
 			elems := make([]llvm.Type, typ.Fields.Length())
 			for iter := typ.Fields.Begin(); iter.HasValue(); iter.Next() {
-				elems[iter.Index()] = self.codegenType(iter.Value())
+				elems[iter.Index()] = self.codegenType(iter.Value().Second)
 			}
 			td.StructSetBody(elems, false)
 			self.types[key] = td
@@ -82,7 +82,7 @@ func (self *CodeGenerator) codegenType(mean analyse.Type) llvm.Type {
 		case *analyse.TypeStruct:
 			elems := make([]llvm.Type, dst.Fields.Length())
 			for iter := dst.Fields.Begin(); iter.HasValue(); iter.Next() {
-				elems[iter.Index()] = self.codegenType(iter.Value())
+				elems[iter.Index()] = self.codegenType(iter.Value().Second)
 			}
 			td.StructSetBody(elems, false)
 		default:
