@@ -8,7 +8,7 @@ Klang是一门简洁的、强类型的编译型语言
 > kcc run examples/snake.k
 ```
 
-<div><img src=./examples/snake.gif width=30%/></div>
+<div><img src=./examples/snake.gif width=40%/></div>
 
 ## Features：
 

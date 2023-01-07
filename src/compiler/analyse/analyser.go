@@ -167,28 +167,24 @@ func analysePackageTypeDef(ctx *packageContext, asts *list.SingleLinkedList[pars
 func analysePackageVariableDecl(ctx *packageContext, asts *list.SingleLinkedList[parse.Global]) utils.Error {
 	var errors []utils.Error
 	for iter := asts.Iterator(); iter.HasValue(); iter.Next() {
+		var g Global
+		var err utils.Error
 		switch global := iter.Value().(type) {
+		case *parse.ExternFunction:
+			g, err = analyseExternFunction(ctx, global)
 		case *parse.Function:
-			f, err := analyseFunctionDecl(ctx, global)
-			if err != nil {
-				errors = append(errors, err)
-			} else {
-				ctx.f.Globals = append(ctx.f.Globals, f)
-			}
+			g, err = analyseFunctionDecl(ctx, global)
 		case *parse.Method:
-			f, err := analyseMethodDecl(ctx, global)
-			if err != nil {
-				errors = append(errors, err)
-			} else {
-				ctx.f.Globals = append(ctx.f.Globals, f)
-			}
+			g, err = analyseMethodDecl(ctx, global)
 		case *parse.GlobalValue:
-			v, err := analyseGlobalVariable(ctx, global)
-			if err != nil {
-				errors = append(errors, err)
-			} else {
-				ctx.f.Globals = append(ctx.f.Globals, v)
-			}
+			g, err = analyseGlobalVariable(ctx, global)
+		default:
+			continue
+		}
+		if err != nil {
+			errors = append(errors, err)
+		} else {
+			ctx.f.Globals = append(ctx.f.Globals, g)
 		}
 	}
 	if len(errors) == 0 {

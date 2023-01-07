@@ -56,6 +56,33 @@ func (self TypeDef) Position() utils.Position {
 
 func (self TypeDef) Global() {}
 
+// ExternFunction 外部函数声明
+type ExternFunction struct {
+	Pos    utils.Position
+	Attrs  []Attr
+	Public bool
+	Ret    Type
+	Name   lex.Token
+	Params []*NameOrNilAndType
+}
+
+func NewExternFunction(pos utils.Position, attrs []Attr, pub bool, ret Type, name lex.Token, params []*NameOrNilAndType) *ExternFunction {
+	return &ExternFunction{
+		Pos:    pos,
+		Attrs:  attrs,
+		Public: pub,
+		Ret:    ret,
+		Name:   name,
+		Params: params,
+	}
+}
+
+func (self ExternFunction) Position() utils.Position {
+	return self.Pos
+}
+
+func (self ExternFunction) Global() {}
+
 // Function 函数
 type Function struct {
 	Pos    utils.Position
@@ -233,9 +260,12 @@ func (self *Parser) parseTypeDef(pub *lex.Token) *TypeDef {
 
 // 函数
 func (self *Parser) parseFunction(pub *lex.Token, attrs []Attr) Global {
+	var isExtern bool
 	for _, attr := range attrs {
 		switch attr.(type) {
-		case *AttrExtern, *AttrLink, *AttrNoReturn, *AttrInline:
+		case *AttrExtern:
+			isExtern = true
+		case *AttrLink, *AttrNoReturn, *AttrInline:
 		default:
 			self.throwErrorf(attr.Position(), errStrCanNotUseAttr)
 			return nil
@@ -263,10 +293,32 @@ func (self *Parser) parseFunction(pub *lex.Token, attrs []Attr) Global {
 	self.expectNextIs(lex.RPA)
 	ret := self.parseTypeOrNil()
 	var body *Block
-	if self.nextIs(lex.LBR) {
+	if !isExtern || self.nextIs(lex.LBR) {
 		body = self.parseBlock()
 	}
-	return NewFunction(utils.MixPosition(begin, self.curTok.Pos), attrs, pub != nil, ret, name, params, body)
+
+	pos := utils.MixPosition(begin, self.curTok.Pos)
+	if isExtern && body == nil {
+		for _, attr := range attrs {
+			switch attr.(type) {
+			case *AttrExtern, *AttrLink, *AttrNoReturn:
+			default:
+				self.throwErrorf(attr.Position(), errStrCanNotUseAttr)
+				return nil
+			}
+		}
+		return NewExternFunction(pos, attrs, pub != nil, ret, name, params)
+	} else {
+		for _, attr := range attrs {
+			switch attr.(type) {
+			case *AttrExtern, *AttrNoReturn, *AttrInline:
+			default:
+				self.throwErrorf(attr.Position(), errStrCanNotUseAttr)
+				return nil
+			}
+		}
+		return NewFunction(pos, attrs, pub != nil, ret, name, params, body)
+	}
 }
 
 // 方法

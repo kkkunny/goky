@@ -82,8 +82,8 @@ func (self GlobalVariable) IsConst() bool {
 
 // *********************************************************************************************************************
 
-// 函数声明
-func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, utils.Error) {
+// 外部函数声明
+func analyseExternFunction(ctx *packageContext, ast *parse.ExternFunction) (*Function, utils.Error) {
 	retType, err := analyseType(ctx, ast.Ret)
 	if err != nil {
 		return nil, err
@@ -128,8 +128,59 @@ func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, u
 				ctx.f.Links[linkPath] = struct{}{}
 			}
 			for _, lib := range attr.Libs {
-				ctx.f.Libs[string(lib.Value)] = struct{}{}
+				ctx.f.Libs[lib.Value] = struct{}{}
 			}
+		case *parse.AttrNoReturn:
+			f.NoReturn = true
+		default:
+			panic("unknown attr")
+		}
+	}
+	if len(errors) == 1 {
+		return nil, errors[0]
+	} else if len(errors) > 1 {
+		return nil, utils.NewMultiError(errors...)
+	}
+
+	if !ctx.AddValue(ast.Public, ast.Name.Source, f) {
+		return nil, utils.Errorf(ast.Name.Pos, "duplicate identifier")
+	}
+	return f, nil
+}
+
+// 函数声明
+func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, utils.Error) {
+	retType, err := analyseType(ctx, ast.Ret)
+	if err != nil {
+		return nil, err
+	}
+
+	params := make([]*Param, len(ast.Params))
+	var errors []utils.Error
+	for i, p := range ast.Params {
+		pt, err := analyseType(ctx, p.Type)
+		if err != nil {
+			errors = append(errors, err)
+			continue
+		}
+		params[i] = &Param{Type: pt}
+	}
+	if len(errors) == 1 {
+		return nil, errors[0]
+	} else if len(errors) > 1 {
+		return nil, utils.NewMultiError(errors...)
+	}
+
+	f := &Function{
+		Ret:    retType,
+		Params: params,
+	}
+
+	// 属性
+	for _, astAttr := range ast.Attrs {
+		switch attr := astAttr.(type) {
+		case *parse.AttrExtern:
+			f.ExternName = attr.Name.Source
 		case *parse.AttrNoReturn:
 			f.NoReturn = true
 		case *parse.AttrInline:
@@ -143,14 +194,6 @@ func analyseFunctionDecl(ctx *packageContext, ast *parse.Function) (*Function, u
 		default:
 			panic("unknown attr")
 		}
-	}
-	if f.ExternName == "" && ast.Body == nil {
-		errors = append(errors, utils.Errorf(ast.Name.Pos, "missing function body"))
-	}
-	if len(errors) == 1 {
-		return nil, errors[0]
-	} else if len(errors) > 1 {
-		return nil, utils.NewMultiError(errors...)
 	}
 
 	if !ctx.AddValue(ast.Public, ast.Name.Source, f) {
@@ -248,7 +291,7 @@ func analyseGlobalVariable(ctx *packageContext, ast *parse.GlobalValue) (*Global
 				ctx.f.Links[linkPath] = struct{}{}
 			}
 			for _, lib := range attr.Libs {
-				ctx.f.Libs[string(lib.Value)] = struct{}{}
+				ctx.f.Libs[lib.Value] = struct{}{}
 			}
 		default:
 			panic("unknown attr")
@@ -302,7 +345,6 @@ func analyseMethodDecl(ctx *packageContext, ast *parse.Method) (*Function, utils
 	}
 
 	// 属性
-	errors = make([]utils.Error, 0)
 	for _, astAttr := range ast.Attrs {
 		switch attr := astAttr.(type) {
 		case *parse.AttrNoReturn:
@@ -318,11 +360,6 @@ func analyseMethodDecl(ctx *packageContext, ast *parse.Method) (*Function, utils
 		default:
 			panic("unknown attr")
 		}
-	}
-	if len(errors) == 1 {
-		return nil, errors[0]
-	} else if len(errors) > 1 {
-		return nil, utils.NewMultiError(errors...)
 	}
 
 	name := _selfType.String() + "." + ast.Name.Source
