@@ -1,4 +1,4 @@
-module github.com/kkkunny/klang
+module github.com/kkkunny/Sim
 
 go 1.18
 

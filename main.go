@@ -4,14 +4,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/kkkunny/klang/cmd"
+	"github.com/kkkunny/Sim/cmd"
 	"github.com/spf13/cobra"
 	"os"
 )
 
 var rootCmd = &cobra.Command{
-	Use:     "kcc",
-	Short:   "The compiler for the K programming language",
+	Use:     "sim",
+	Short:   "The compiler for the Sim programming language",
 	Version: "v0.1",
 }
 

@@ -1,7 +1,9 @@
+BIN_FILE = sim
+EXT_NAME = sim
 WORK_PATH = $(shell pwd)
 TEST_DIR = $(WORK_PATH)/tests
-TEST_FILE = $(TEST_DIR)/hello_world.k
-KCC_FILE = $(GOPATH)/bin/kcc
+TEST_FILE = $(TEST_DIR)/hello_world.$(EXT_NAME)
+BIN_PATH = $(GOPATH)/bin/$(BIN_FILE)
 
 .PHONY: lex
 lex: lex.go $(TEST_FILE)
@@ -29,22 +31,22 @@ codegen: codegen.go $(TEST_FILE)
 
 .PHONY: build
 build: clean main.go
-	go build -tags llvm14 -o kcc main.go
-	ln -s $(WORK_PATH)/kcc $(KCC_FILE)
+	go build -tags llvm14 -o $(BIN_FILE) main.go
+	ln -s $(WORK_PATH)/$(BIN_FILE) $(BIN_PATH)
 
 .PHONY: clean
 clean:
-	rm -f $(WORK_PATH)/kcc
-	rm -f $(KCC_FILE)
+	rm -f $(WORK_PATH)/$(BIN_FILE)
+	rm -f $(BIN_PATH)
 
 .PHONY: test
 test: build
-	@for file in $(foreach dir, $(TEST_DIR), $(wildcard $(TEST_DIR)/*.k)); do \
-		echo kcc run $$file > /dev/null; \
+	@for file in $(foreach dir, $(TEST_DIR), $(wildcard $(TEST_DIR)/*.$(EXT_NAME))); do \
+		echo $(BIN_FILE) run $$file > /dev/null; \
 		echo -e "\e[32m 测试成功 $$file \e[0m"; \
     done; \
     make clean
 
 .PHONY: docker
 docker:
-	docker build -t klang:latest .
+	docker build -t $(BIN_FILE):latest .

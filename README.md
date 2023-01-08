@@ -1,11 +1,11 @@
-# Klang
+# Sim
 
-Klang是一门简洁的、强类型的编译型语言
+Sim是一门简洁的、强类型的编译型语言
 
 ## Snake
 
 ```shell
-> kcc run examples/snake.k
+> sim run examples/snake.sim
 ```
 
 <div><img src=./examples/snake.gif width=40%/></div>
@@ -49,8 +49,8 @@ Klang是一门简洁的、强类型的编译型语言
 ## Install
 
 ```shell
-> git clone https://github.com/kkkunny/klang.git
-> cd klang
+> git clone https://github.com/kkkunny/Sim.git
+> cd Sim
 > go mod download
 > make build
 ```
@@ -59,27 +59,25 @@ Klang是一门简洁的、强类型的编译型语言
 
 ```shell
 > make docker
-> docker run -it --name klang klang
+> docker run -it --name sim sim
 ```
 
 ## Hello World
 
-tests/hello_world.k
+tests/hello_world.sim
 
 ```go
-import std.c
 import std.io
 import std.container.string
 
 @extern(main)
 func main()u8{
-    c::setlocale(c::LC_ALL, c"")
     io::println(string::new("Hello World"))
     return 0
 }
 ```
 
 ```shell
-> kcc run tests/hello_world.k
+> sim run tests/hello_world.sim
 Hello World
 ```

@@ -1,9 +1,9 @@
 package analyse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/lex"
-	"github.com/kkkunny/klang/src/compiler/parse"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/lex"
+	"github.com/kkkunny/Sim/src/compiler/parse"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 )
 
 // Expr 表达式
@@ -114,30 +114,6 @@ func (self String) IsTemporary() bool {
 }
 
 func (self String) IsConst() bool {
-	return true
-}
-
-// CString c语言风格字符串
-type CString struct {
-	Type  Type
-	Value string
-}
-
-func (self CString) stmt() {}
-
-func (self CString) GetType() Type {
-	return self.Type
-}
-
-func (self CString) GetMut() bool {
-	return false
-}
-
-func (self CString) IsTemporary() bool {
-	return true
-}
-
-func (self CString) IsConst() bool {
 	return true
 }
 
@@ -677,18 +653,10 @@ func analyseExpr(ctx *blockContext, expect Type, ast parse.Expr) (Expr, utils.Er
 			Value: int64(expr.Value),
 		}, nil
 	case *parse.String:
-		if expect == nil || !GetDepthBaseType(expect).Equal(NewPtrType(I32)) {
-			expect = NewPtrType(I32)
-		}
-		return &String{
-			Type:  expect,
-			Value: expr.Value,
-		}, nil
-	case *parse.CString:
 		if expect == nil || !GetDepthBaseType(expect).Equal(NewPtrType(I8)) {
 			expect = NewPtrType(I8)
 		}
-		return &CString{
+		return &String{
 			Type:  expect,
 			Value: expr.Value,
 		}, nil

@@ -2,8 +2,8 @@ package analyse
 
 import (
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/parse"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/parse"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
 	"github.com/kkkunny/stl/set"
 	"github.com/kkkunny/stl/table"

@@ -2,8 +2,8 @@ package codegen
 
 import (
 	"fmt"
+	"github.com/kkkunny/Sim/src/compiler/analyse"
 	"github.com/kkkunny/go-llvm"
-	"github.com/kkkunny/klang/src/compiler/analyse"
 	stlutil "github.com/kkkunny/stl/util"
 	"unsafe"
 )
@@ -11,7 +11,7 @@ import (
 // 表达式
 func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Value {
 	switch expr := mean.(type) {
-	case *analyse.Null, *analyse.Integer, *analyse.Float, *analyse.Boolean, *analyse.EmptyStruct, *analyse.EmptyArray, *analyse.EmptyTuple:
+	case *analyse.Null, *analyse.Integer, *analyse.Float, *analyse.Boolean, *analyse.String, *analyse.EmptyStruct, *analyse.EmptyArray, *analyse.EmptyTuple:
 		return self.codegenConstantExpr(mean)
 	case *analyse.Binary:
 		switch expr.Opera {
@@ -373,43 +373,6 @@ func (self *CodeGenerator) codegenExpr(mean analyse.Expr, getValue bool) llvm.Va
 		return v
 	case *analyse.GetTypeBytes:
 		return llvm.SizeOf(self.codegenType(expr.Type))
-	case *analyse.String:
-		v, ok := self.cstringPool[expr.Value]
-		if !ok {
-			runes := []rune(expr.Value)
-			elems := make([]llvm.Value, len(runes)+1)
-			for i, r := range runes {
-				elems[i] = llvm.ConstInt(self.ctx.Int32Type(), uint64(r), true)
-			}
-			elems[len(elems)-1] = llvm.ConstInt(self.ctx.Int32Type(), 0, true)
-			init := llvm.ConstArray(v.Type().ElementType(), elems)
-
-			vv := llvm.AddGlobal(self.module, init.Type(), "")
-			vv.SetGlobalConstant(true)
-			vv.SetLinkage(llvm.PrivateLinkage)
-			vv.SetInitializer(init)
-			v = llvm.AddGlobal(self.module, self.codegenType(expr.GetType()), "")
-			v.SetGlobalConstant(true)
-			v.SetLinkage(llvm.PrivateLinkage)
-			v.SetInitializer(llvm.ConstPointerCast(vv, v.Type().ElementType()))
-			self.cstringPool[expr.Value] = v
-		}
-		return self.builder.CreateLoad(v.Type().ElementType(), v, "")
-	case *analyse.CString:
-		v, ok := self.cstringPool[expr.Value]
-		if !ok {
-			init := llvm.ConstString(expr.Value, true)
-			vv := llvm.AddGlobal(self.module, init.Type(), "")
-			vv.SetGlobalConstant(true)
-			vv.SetLinkage(llvm.PrivateLinkage)
-			vv.SetInitializer(init)
-			v = llvm.AddGlobal(self.module, self.codegenType(expr.GetType()), "")
-			v.SetGlobalConstant(true)
-			v.SetLinkage(llvm.PrivateLinkage)
-			v.SetInitializer(llvm.ConstPointerCast(vv, v.Type().ElementType()))
-			self.cstringPool[expr.Value] = v
-		}
-		return self.builder.CreateLoad(v.Type().ElementType(), v, "")
 	default:
 		panic("")
 	}
@@ -447,6 +410,21 @@ func (self *CodeGenerator) codegenConstantExpr(mean analyse.Expr) llvm.Value {
 			elems[i] = self.codegenConstantExpr(e)
 		}
 		return self.ctx.ConstStruct(elems, false)
+	case *analyse.String:
+		v, ok := self.cstringPool[expr.Value]
+		if !ok {
+			init := llvm.ConstString(expr.Value, true)
+			vv := llvm.AddGlobal(self.module, init.Type(), "")
+			vv.SetGlobalConstant(true)
+			vv.SetLinkage(llvm.PrivateLinkage)
+			vv.SetInitializer(init)
+			v = llvm.AddGlobal(self.module, self.codegenType(expr.GetType()), "")
+			v.SetGlobalConstant(true)
+			v.SetLinkage(llvm.PrivateLinkage)
+			v.SetInitializer(llvm.ConstPointerCast(vv, v.Type().ElementType()))
+			self.cstringPool[expr.Value] = v
+		}
+		return self.builder.CreateLoad(v.Type().ElementType(), v, "")
 	default:
 		panic("")
 	}

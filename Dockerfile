@@ -6,7 +6,7 @@ RUN pacman-key --init
 RUN pacman --noconfirm -Sy archlinux-keyring
 RUN pacman --noconfirm -Syu make git gcc go llvm
 
-WORKDIR /klang
+WORKDIR /sim
 COPY . .
 RUN go mod download
 RUN make build

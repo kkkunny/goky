@@ -4,7 +4,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/lex"
+	"github.com/kkkunny/Sim/src/compiler/lex"
 	stlos "github.com/kkkunny/stl/os"
 	"github.com/kkkunny/stl/util"
 	"os"

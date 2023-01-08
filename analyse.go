@@ -5,8 +5,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/analyse"
-	"github.com/kkkunny/klang/src/compiler/parse"
+	"github.com/kkkunny/Sim/src/compiler/analyse"
+	"github.com/kkkunny/Sim/src/compiler/parse"
 	stlos "github.com/kkkunny/stl/os"
 	"github.com/kkkunny/stl/util"
 	"os"

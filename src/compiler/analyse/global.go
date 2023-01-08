@@ -1,9 +1,9 @@
 package analyse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/lex"
-	"github.com/kkkunny/klang/src/compiler/parse"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/lex"
+	"github.com/kkkunny/Sim/src/compiler/parse"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
 )
 

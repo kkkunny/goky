@@ -1,8 +1,8 @@
 package analyse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/parse"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/parse"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 )
 
 // Block 代码块

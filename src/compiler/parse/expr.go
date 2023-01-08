@@ -2,8 +2,8 @@ package parse
 
 import (
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/lex"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/lex"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 	"strconv"
 )
 
@@ -140,27 +140,6 @@ func (self String) Position() utils.Position {
 func (self String) Stmt() {}
 
 func (self String) Expr() {}
-
-// CString 字符串
-type CString struct {
-	Token lex.Token
-	Value string
-}
-
-func NewCString(tok lex.Token, v string) *CString {
-	return &CString{
-		Token: tok,
-		Value: v,
-	}
-}
-
-func (self CString) Position() utils.Position {
-	return self.Token.Pos
-}
-
-func (self CString) Stmt() {}
-
-func (self CString) Expr() {}
 
 // Null 空指针
 type Null struct {
@@ -437,9 +416,6 @@ func (self *Parser) parsePrimaryExpr() Expr {
 		return NewChar(self.curTok, []rune(self.curTok.Source)[1])
 	case lex.STRING:
 		return self.parseStringExpr()
-	case lex.CSTRING:
-		self.next()
-		return NewCString(self.curTok, self.curTok.Source[2:len(self.curTok.Source)-1])
 	case lex.NULL:
 		self.next()
 		return NewNull(self.curTok)

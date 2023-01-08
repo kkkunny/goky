@@ -3,10 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/kkkunny/Sim/src/compiler/analyse"
+	"github.com/kkkunny/Sim/src/compiler/codegen"
+	"github.com/kkkunny/Sim/src/compiler/parse"
 	"github.com/kkkunny/go-llvm"
-	"github.com/kkkunny/klang/src/compiler/analyse"
-	"github.com/kkkunny/klang/src/compiler/codegen"
-	"github.com/kkkunny/klang/src/compiler/parse"
 	stlos "github.com/kkkunny/stl/os"
 	"math/rand"
 	"os"

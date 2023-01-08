@@ -2,7 +2,7 @@ package lex
 
 import (
 	"fmt"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 )
 
 // TokenKind token kind
@@ -13,14 +13,13 @@ const (
 	EOF                      // 结束符
 	COMMENT                  // 注释
 
-	IDENT   // 标识符
-	Attr    // 属性
-	INT     // 整数
-	FLOAT   // 浮点数
-	CHAR    // 字符
-	STRING  // 字符串
-	CSTRING // c语言风格字符串
-	NULL    // 空指针
+	IDENT  // 标识符
+	Attr   // 属性
+	INT    // 整数
+	FLOAT  // 浮点数
+	CHAR   // 字符
+	STRING // 字符串
+	NULL   // 空指针
 
 	ASS // =
 	ADS // +=
@@ -95,14 +94,13 @@ var tokenKindStr = [...]string{
 	EOF:     "eof",
 	COMMENT: "comment",
 
-	IDENT:   "ident",
-	Attr:    "attr",
-	INT:     "int",
-	FLOAT:   "float",
-	CHAR:    "char",
-	STRING:  "string",
-	CSTRING: "cstring",
-	NULL:    "null",
+	IDENT:  "ident",
+	Attr:   "attr",
+	INT:    "int",
+	FLOAT:  "float",
+	CHAR:   "char",
+	STRING: "string",
+	NULL:   "null",
 
 	ASS: "=",
 	ADS: "+=",

@@ -1,8 +1,8 @@
 package analyse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/parse"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/parse"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 	"github.com/kkkunny/stl/list"
 	stlos "github.com/kkkunny/stl/os"
 	"github.com/kkkunny/stl/set"

@@ -2,13 +2,17 @@ package parse
 
 import (
 	"bytes"
-	"github.com/kkkunny/klang/src/compiler/lex"
+	"github.com/kkkunny/Sim/src/compiler/lex"
 	stlos "github.com/kkkunny/stl/os"
 	"os"
 )
 
 // ParseFile 词法-语法分析单文件
 func ParseFile(path stlos.Path) (*Package, error) {
+	path, err := path.GetAbsolute()
+	if err != nil {
+		return nil, err
+	}
 	content, err := os.ReadFile(string(path))
 	if err != nil {
 		return nil, err
@@ -25,6 +29,10 @@ func ParseFile(path stlos.Path) (*Package, error) {
 
 // ParsePackage 词法-语法分析包
 func ParsePackage(path stlos.Path) (*Package, error) {
+	path, err := path.GetAbsolute()
+	if err != nil {
+		return nil, err
+	}
 	files, err := os.ReadDir(string(path))
 	if err != nil {
 		return nil, err
@@ -35,7 +43,7 @@ func ParsePackage(path stlos.Path) (*Package, error) {
 			continue
 		}
 		fp := path.Join(stlos.Path(f.Name()))
-		if fp.GetExtension() != "k" {
+		if fp.GetExtension() != "sim" {
 			continue
 		}
 

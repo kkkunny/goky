@@ -13,7 +13,7 @@ func RunCmd() *cobra.Command {
 	var conf buildConfig
 	cmd := &cobra.Command{
 		Use:   "run",
-		Short: "compiler and then run a k source file",
+		Short: "compiler and then run a sim source file",
 		Args: func(cmd *cobra.Command, args []string) error {
 			if err := cobra.ExactArgs(1)(cmd, args); err != nil {
 				return err
@@ -21,7 +21,7 @@ func RunCmd() *cobra.Command {
 			conf.End = "exe"
 			target := stlos.Path(args[0])
 			if !target.IsExist() {
-				return errors.New("expect a k source file path")
+				return errors.New("expect a sim source file path")
 			}
 			target, err := target.GetAbsolute()
 			if err != nil {

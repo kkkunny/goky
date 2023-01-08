@@ -2,7 +2,7 @@ package lex
 
 import (
 	"errors"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 	stlos "github.com/kkkunny/stl/os"
 	stlutil "github.com/kkkunny/stl/util"
 	"io"
@@ -225,31 +225,11 @@ func (self *Lexer) scanString() Token {
 	}
 }
 
-// 扫描c语言风格字符串
-func (self *Lexer) scanCString() Token {
-	pos := utils.NewPosition(self.file)
-	pos.SetBegin(self.pos, self.row, self.col)
-	pos.SetEnd(self.pos, self.row, self.col)
-	self.next()
-
-	str := self.scanString()
-	pos = utils.MixPosition(pos, str.Pos)
-	s := "c" + str.Source
-
-	return Token{
-		Pos:    pos,
-		Kind:   stlutil.Ternary(str.Kind == STRING, CSTRING, ILLEGAL),
-		Source: s,
-	}
-}
-
 // Scan 词法分析
 func (self *Lexer) Scan() Token {
 	self.skipWhiteSpace()
 
-	if self.ch == 'c' && self.peek() == '"' {
-		return self.scanCString()
-	} else if self.ch == '_' || unicode.IsLetter(self.ch) {
+	if self.ch == '_' || unicode.IsLetter(self.ch) {
 		return self.scanIdent()
 	} else if self.ch == '@' {
 		return self.scanAttr()

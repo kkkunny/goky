@@ -1,8 +1,8 @@
 package parse
 
 import (
-	"github.com/kkkunny/klang/src/compiler/lex"
-	"github.com/kkkunny/klang/src/compiler/utils"
+	"github.com/kkkunny/Sim/src/compiler/lex"
+	"github.com/kkkunny/Sim/src/compiler/utils"
 )
 
 // Attr 属性

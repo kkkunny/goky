@@ -1,8 +1,8 @@
 package codegen
 
 import (
+	"github.com/kkkunny/Sim/src/compiler/utils"
 	"github.com/kkkunny/go-llvm"
-	"github.com/kkkunny/klang/src/compiler/utils"
 )
 
 var (
