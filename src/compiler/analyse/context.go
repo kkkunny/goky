@@ -42,7 +42,8 @@ type packageContext struct {
 	globals  map[string]types.Pair[bool, Ident]
 	typedefs map[string]types.Pair[bool, *Typedef]
 
-	externs map[string]*packageContext
+	externs  map[string]*packageContext
+	includes []*packageContext
 }
 
 // 新建包环境
@@ -62,8 +63,14 @@ func (self packageContext) GetProgramContext() *ProgramContext {
 }
 
 func (self packageContext) GetValue(name string) types.Pair[bool, Ident] {
-	if f, ok := self.globals[name]; ok {
-		return f
+	if v, ok := self.globals[name]; ok {
+		return v
+	}
+	// 从后向前遍历import *的包
+	for i := len(self.includes) - 1; i >= 0; i-- {
+		if v, ok := self.includes[i].globals[name]; ok {
+			return v
+		}
 	}
 	return types.NewPair[bool, Ident](false, nil)
 }

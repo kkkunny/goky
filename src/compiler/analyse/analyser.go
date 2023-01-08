@@ -48,20 +48,28 @@ func analyseNoMain(ctx *packageContext, ast *parse.Package) error {
 			// 包名
 			var pkgName string
 			var pkgPos utils.Position
-			if importAst.Alias == nil {
+			if importAst.Suffix == nil {
 				pkgName = pkgPath.GetBase().String()
 				pkgPos = importAst.Packages[len(importAst.Packages)-1].Pos
-			} else {
-				pkgName = importAst.Alias.Source
-				pkgPos = importAst.Alias.Pos
+			} else if importAst.Suffix.IsRight() {
+				pkgName = importAst.Suffix.Right().Source
+				pkgPos = importAst.Suffix.Right().Pos
 			}
+			// 导入包
 			if pkgCtx, ok := ctx.f.importedPackageSet[pkgPath]; !ok {
-				if _, ok := ctx.externs[pkgName]; ok {
-					return utils.Errorf(pkgPos, "duplicate identifier")
+				// 从没导入过
+				if importAst.Suffix != nil && importAst.Suffix.IsLeft() {
+					ctx.f.importedPackageSet[pkgPath] = nil
+					pkgCtx = newPackageContext(ctx.f, pkgPath)
+					ctx.includes = append(ctx.includes, pkgCtx)
+				} else {
+					if _, ok := ctx.externs[pkgName]; ok {
+						return utils.Errorf(pkgPos, "duplicate identifier")
+					}
+					ctx.f.importedPackageSet[pkgPath] = nil
+					pkgCtx = newPackageContext(ctx.f, pkgPath)
+					ctx.externs[pkgName] = pkgCtx
 				}
-				ctx.f.importedPackageSet[pkgPath] = nil
-				pkgCtx := newPackageContext(ctx.f, pkgPath)
-				ctx.externs[pkgName] = pkgCtx
 				// 语法分析
 				pkgAst, err := parse.ParsePackage(pkgPath)
 				if err != nil {
@@ -72,13 +80,18 @@ func analyseNoMain(ctx *packageContext, ast *parse.Package) error {
 				}
 				ctx.f.importedPackageSet[pkgPath] = pkgCtx
 			} else {
+				// 以前导入过
 				if pkgCtx == nil {
 					return utils.Errorf(importAst.Position(), "circular reference package `%s`", pkgPath)
 				}
-				if c, ok := ctx.externs[pkgName]; ok && pkgCtx != c {
-					return utils.Errorf(pkgPos, "duplicate identifier")
+				if importAst.Suffix != nil && importAst.Suffix.IsLeft() {
+					ctx.includes = append(ctx.includes, pkgCtx)
+				} else {
+					if c, ok := ctx.externs[pkgName]; ok && pkgCtx != c {
+						return utils.Errorf(pkgPos, "duplicate identifier")
+					}
+					ctx.externs[pkgName] = pkgCtx
 				}
-				ctx.externs[pkgName] = pkgCtx
 			}
 		}
 	}

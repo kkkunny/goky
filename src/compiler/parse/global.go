@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/kkkunny/Sim/src/compiler/lex"
 	"github.com/kkkunny/Sim/src/compiler/utils"
+	"github.com/kkkunny/stl/types"
 )
 
 // Global 全局
@@ -16,14 +17,14 @@ type Global interface {
 type Import struct {
 	Pos      utils.Position
 	Packages []lex.Token
-	Alias    *lex.Token
+	Suffix   *types.Either[bool, lex.Token] // 左为import ... as *， 右为import ... as alias
 }
 
-func NewImport(pos utils.Position, pkgs []lex.Token, alias *lex.Token) *Import {
+func NewImport(pos utils.Position, pkgs []lex.Token, suffix *types.Either[bool, lex.Token]) *Import {
 	return &Import{
 		Pos:      pos,
 		Packages: pkgs,
-		Alias:    alias,
+		Suffix:   suffix,
 	}
 }
 
@@ -238,12 +239,17 @@ func (self *Parser) parseGlobalWithAttr(pub *lex.Token) Global {
 func (self *Parser) parseImport() *Import {
 	begin := self.expectNextIs(lex.IMPORT).Pos
 	pkgs := self.parseTokenListAtLeastOne(lex.DOT)
-	var alias *lex.Token
+	var suffix *types.Either[bool, lex.Token]
 	if self.skipNextIs(lex.AS) {
-		name := self.expectNextIs(lex.IDENT)
-		alias = &name
+		var either types.Either[bool, lex.Token]
+		if self.skipNextIs(lex.MUL) {
+			either = types.Left[bool, lex.Token](true)
+		} else {
+			either = types.Right[bool, lex.Token](self.expectNextIs(lex.IDENT))
+		}
+		suffix = &either
 	}
-	return NewImport(utils.MixPosition(begin, pkgs[len(pkgs)-1].Pos), pkgs, alias)
+	return NewImport(utils.MixPosition(begin, pkgs[len(pkgs)-1].Pos), pkgs, suffix)
 }
 
 // 类型定义
